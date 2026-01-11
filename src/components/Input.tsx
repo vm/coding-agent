@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useInput } from 'ink';
 import { Text, Box } from 'ink';
+import Spinner from 'ink-spinner';
 
 type Props = {
   onSubmit: (text: string) => void;
@@ -25,18 +26,24 @@ export function Input({ onSubmit, disabled = false }: Props) {
     }
   });
 
-  return (
-    <Box flexDirection="row" alignItems="center">
-      <Text color={disabled ? 'gray' : 'magenta'} bold>›</Text>
-      <Box marginLeft={1} flexGrow={1}>
-        {value.length > 0 ? (
-          <Text color="white">{value}</Text>
-        ) : (
-          <Text color="gray" dimColor>{disabled ? 'working...' : ''}</Text>
-        )}
-        {!disabled && <Text color="magenta">▌</Text>}
+  if (disabled) {
+    return (
+      <Box>
+        <Text color="yellow"><Spinner type="dots" /></Text>
       </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <Text color="cyan" bold>›</Text>
+      <Text> </Text>
+      {value.length > 0 ? (
+        <Text color="white">{value}</Text>
+      ) : (
+        <Text color="gray" dimColor>ask anything...</Text>
+      )}
+      <Text color="cyan">▎</Text>
     </Box>
   );
 }
-

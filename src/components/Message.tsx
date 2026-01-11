@@ -10,15 +10,20 @@ type Props = {
 export function Message({ role, content }: Props) {
   const isUser = role === MessageRole.USER;
   
+  if (isUser) {
+    return (
+      <Box>
+        <Text color="yellow" bold>you</Text>
+        <Text color="gray"> </Text>
+        <Text color="white">{content}</Text>
+      </Box>
+    );
+  }
+  
+  // Assistant message - can be multiline with formatting
   return (
     <Box flexDirection="column">
-      <Text color={isUser ? 'cyan' : 'magenta'} bold>
-        {isUser ? 'you' : 'agent'}
-      </Text>
-      <Box paddingLeft={2} flexDirection="column">
-        <FormattedText content={content} />
-      </Box>
+      <FormattedText content={content} />
     </Box>
   );
 }
-
