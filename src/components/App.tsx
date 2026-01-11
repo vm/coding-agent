@@ -111,16 +111,6 @@ export function App() {
 
   const { reads, edits, lists, runs } = groupedToolCalls();
 
-  const banner = [
-    '░▒▓███████▓▒░░▒▓█▓▒░▒▓█▓▒░       ░▒▓██████▓▒░        ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░',
-    '░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░',
-    '░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░',
-    '░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░      ░▒▓████████▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓██████▓▒░',
-    '░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░',
-    '░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░      ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░',
-    '░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓████████▓▒░▒▓█▓▒░░▒▓█▓▒░       ░▒▓██████▓▒░ ░▒▓██████▓▒░░▒▓███████▓▒░░▒▓████████▓▒░',
-  ];
-
   return (
     <Box flexDirection="column" height={terminalHeight}>
       {/* Start Screen */}
@@ -128,9 +118,34 @@ export function App() {
         <Box flexDirection="column" alignItems="center" justifyContent="center" flexGrow={1}>
           {/* Banner */}
           <Box flexDirection="column">
-            {banner.map((line, i) => (
-              <Text key={i} color="cyan">{line}</Text>
-            ))}
+            <Text>
+              <Text color="magenta">╭╮╱╭┳━━┳╮</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="magenta">╭━━╮</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="cyan">╭━━┳━━┳━━┳━━╮</Text>
+            </Text>
+            <Text>
+              <Text color="magenta">┃┃╰╯┃┃╭╮┃┃</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="magenta">┃╭╮┃</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="cyan">┃╭━┫╭╮┃╭╮┃┃━┫</Text>
+            </Text>
+            <Text>
+              <Text color="magenta">┃╭╮╮┃┃┃┃┃┃</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="magenta">┃╰╯┃</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="cyan">┃╰━┫╰╯┃╰╯┃┃━┫</Text>
+            </Text>
+            <Text>
+              <Text color="magenta">╰╯╰━┻┻┻┻━╯</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="magenta">╰━━╯</Text>
+              <Text color="white">╱╱╱</Text>
+              <Text color="cyan">╰━━┻━━┻━━┻━━╯</Text>
+            </Text>
           </Box>
           
           {/* Subtitle */}
