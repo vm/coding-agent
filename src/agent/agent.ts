@@ -11,6 +11,8 @@ Current working directory: ${workingDir}
 
 All file paths should be relative to this directory unless the user specifies an absolute path. When the user mentions "this directory" or "current directory", they mean: ${workingDir}
 
+The user can change the working directory by typing "cd /path/to/directory". When they do this, the working directory changes and all subsequent operations happen in the new directory.
+
 When the user asks you to perform a task:
 1. Break it down into steps
 2. Use the available tools to accomplish each step
