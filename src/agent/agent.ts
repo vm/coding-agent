@@ -1,6 +1,14 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { tools, executeTool } from '../tools/index';
-import type { MessageParam, AgentResponse, ToolCall, ContentBlock, ToolResultBlockParam, AgentOptions } from './types';
+import { ModelName, StopReason, ContentBlockType } from './types';
+import type { 
+  MessageParam, 
+  AgentResponse, 
+  ToolCall, 
+  ContentBlock, 
+  ToolResultBlockParam, 
+  AgentOptions,
+} from './types';
 import { cwd } from 'node:process';
 
 const getSystemPrompt = (): string => {
@@ -58,15 +66,15 @@ export class Agent {
     toolUse: Extract<ContentBlock, { type: 'tool_use' }>
   ): Promise<{ result: string; error: boolean }> {
     try {
-      this.options.onToolStart(toolUse.name, toolUse.input);
+      this.options.onToolStart(toolUse.id, toolUse.name, toolUse.input);
       const result = executeTool(toolUse.name, toolUse.input);
       const isError = result.startsWith('Error:');
-      this.options.onToolComplete(toolUse.name, result, isError);
+      this.options.onToolComplete(toolUse.id, toolUse.name, result, isError);
       return { result, error: isError };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const result = `Error: Tool execution failed: ${errorMessage}`;
-      this.options.onToolComplete(toolUse.name, result, true);
+      this.options.onToolComplete(toolUse.id, toolUse.name, result, true);
       return { result, error: true };
     }
   }
@@ -120,7 +128,7 @@ export class Agent {
     for (let attempt = 0; attempt < this.options.maxRetries; attempt++) {
       try {
         const response = await this.client.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: ModelName.CLAUDE_SONNET_4,
           max_tokens: 8096,
           system: getSystemPrompt(),
           tools: tools,
@@ -176,19 +184,19 @@ export class Agent {
         const stopReason = response.stop_reason;
 
         // Handle max_tokens stop reason
-        if (stopReason === 'max_tokens') {
+        if (stopReason === StopReason.MAX_TOKENS) {
           return {
             text: 'Response was truncated due to token limit. Please ask for a shorter response or break down your request.',
             toolCalls,
             tokenUsage,
-            error: 'max_tokens',
+            error: StopReason.MAX_TOKENS,
           };
         }
 
         // Check if we have tool_use blocks
         const toolUseBlocks = content.filter(
           (block): block is Extract<ContentBlock, { type: 'tool_use' }> =>
-            block.type === 'tool_use'
+            block.type === ContentBlockType.TOOL_USE
         );
 
         if (toolUseBlocks.length > 0) {
@@ -223,7 +231,7 @@ export class Agent {
         // We have a text response
         const textBlocks = content.filter(
           (block): block is Extract<ContentBlock, { type: 'text' }> =>
-            block.type === 'text'
+            block.type === ContentBlockType.TEXT
         );
 
         if (textBlocks.length > 0) {

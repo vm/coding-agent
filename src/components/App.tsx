@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useStdout } from 'ink';
+import Spinner from 'ink-spinner';
 import { Agent } from '../agent/agent';
 import { Message } from './Message';
 import { ToolCall } from './ToolCall';
@@ -13,6 +14,7 @@ type MessageItem = {
 };
 
 type ActiveToolCall = {
+  id: string;
   name: string;
   input: Record<string, unknown>;
   status: 'running';
@@ -33,19 +35,19 @@ export function App() {
 
   const [agent] = useState(() => {
     return new Agent(undefined, {
-      onToolStart: (name, input) => {
+      onToolStart: (id, name, input) => {
         setActiveToolCalls(prev => {
-          const updated = [...prev, { name, input, status: 'running' as const }];
+          const updated = [...prev, { id, name, input, status: 'running' as const }];
           activeToolCallsRef.current = updated;
           return updated;
         });
       },
-      onToolComplete: (name, result, error) => {
-        // Capture input BEFORE removing from active
-        const toolInput = activeToolCallsRef.current.find(tc => tc.name === name)?.input || {};
+      onToolComplete: (id, name, result, error) => {
+        // Capture input BEFORE removing from active (match by id)
+        const toolInput = activeToolCallsRef.current.find(tc => tc.id === id)?.input || {};
         
         setActiveToolCalls(prev => {
-          const updated = prev.filter(tc => tc.name !== name);
+          const updated = prev.filter(tc => tc.id !== id);
           activeToolCallsRef.current = updated;
           return updated;
         });
@@ -61,8 +63,6 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [terminalHeight, setTerminalHeight] = useState(stdout.rows || 24);
-  const [spinnerFrame, setSpinnerFrame] = useState(0);
-  const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
   // Handle Ctrl+C gracefully
   useEffect(() => {
@@ -88,17 +88,6 @@ export function App() {
       stdout.off('resize', updateSize);
     };
   }, [stdout]);
-
-  // Animate spinner when loading
-  useEffect(() => {
-    if (!isLoading) return;
-    
-    const interval = setInterval(() => {
-      setSpinnerFrame(prev => (prev + 1) % spinnerFrames.length);
-    }, 80);
-    
-    return () => clearInterval(interval);
-  }, [isLoading, spinnerFrames.length]);
 
   const handleSubmit = async (text: string) => {
     // Add user message
@@ -179,27 +168,26 @@ export function App() {
               })}
               
               {/* Active Tool Calls (running) */}
-              {activeToolCalls.map((toolCall, idx) => (
-                <Box key={`active-${idx}`}>
-                  <ToolCall
-                    name={toolCall.name}
-                    input={toolCall.input}
-                    status="running"
-                  />
+              {activeToolCalls.length > 0 && (
+                <Box>
+                  <Text color="yellow"><Spinner type="dots" /></Text>
+                  <Text color="gray"> working...</Text>
                 </Box>
-              ))}
+              )}
               
-              {/* Completed Tool Calls */}
-              {toolCalls.map((toolCall, idx) => (
-                <Box key={`done-${idx}`}>
-                  <ToolCall
-                    name={toolCall.name}
-                    input={toolCall.input}
-                    status={toolCall.error ? 'error' : 'done'}
-                    result={toolCall.result}
-                  />
-                </Box>
-              ))}
+              {/* Completed Tool Calls - skip list_files, show reads/edits/runs */}
+              {toolCalls
+                .filter(tc => tc.name !== 'list_files')
+                .map((toolCall, idx) => (
+                  <Box key={`done-${idx}`}>
+                    <ToolCall
+                      name={toolCall.name}
+                      input={toolCall.input}
+                      status={toolCall.error ? 'error' : 'done'}
+                      result={toolCall.result}
+                    />
+                  </Box>
+                ))}
               
               {/* Now render the last assistant message (after tool calls) */}
               {lastAssistantIdx >= 0 && toolCalls.length > 0 && (
@@ -211,8 +199,8 @@ export function App() {
               {/* Loading indicator */}
               {isLoading && activeToolCalls.length === 0 && (
                 <Box marginTop={1}>
-                  <Text color="magenta">{spinnerFrames[spinnerFrame]}</Text>
-                  <Text color="gray" dimColor> working...</Text>
+                  <Text color="yellow"><Spinner type="dots" /></Text>
+                  <Text color="gray" dimColor> thinking...</Text>
                 </Box>
               )}
               {error && (

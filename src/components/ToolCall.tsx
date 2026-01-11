@@ -7,6 +7,7 @@ type Props = {
   status: 'running' | 'done' | 'error';
   result?: string;
   showPreview?: boolean;
+  count?: number;
 };
 
 function getFileName(path: string): string {
@@ -83,7 +84,7 @@ function DiffPreview({ oldStr, newStr }: { oldStr: string; newStr: string }) {
   );
 }
 
-export function ToolCall({ name, input, status, result, showPreview = true }: Props) {
+export function ToolCall({ name, input, status, result, showPreview = true, count = 1 }: Props) {
   const safeInput = input || {};
   const filePath = safeInput.file_path ? String(safeInput.file_path) : null;
   const directory = safeInput.directory ? String(safeInput.directory) : null;
@@ -123,7 +124,10 @@ export function ToolCall({ name, input, status, result, showPreview = true }: Pr
   const getLabel = () => {
     if (isEdit && filePath) return getFileName(filePath);
     if (isRead && filePath) return getFileName(filePath);
-    if (isList) return directory === '.' ? './' : (directory ? directory + '/' : './');
+    if (isList) {
+      if (count > 1) return `scanned ${count} directories`;
+      return directory === '.' ? './' : (directory ? directory + '/' : './');
+    }
     if (isRun && command) {
       return command.length > 50 ? command.slice(0, 50) + '…' : command;
     }

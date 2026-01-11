@@ -2,11 +2,12 @@ import { readFile } from './read-file';
 import { editFile } from './edit-file';
 import { runCommand } from './run-command';
 import { listFiles } from './list-files';
+import { ToolName } from '../agent/types';
 
 // Tool definitions for Claude API
 export const tools = [
   {
-    name: 'read_file',
+    name: ToolName.READ_FILE,
     description: 'Read the contents of a file',
     input_schema: {
       type: 'object',
@@ -20,7 +21,7 @@ export const tools = [
     },
   },
   {
-    name: 'edit_file',
+    name: ToolName.EDIT_FILE,
     description: 'Edit a file by replacing a string with another string, or create a new file if old_str is empty',
     input_schema: {
       type: 'object',
@@ -42,7 +43,7 @@ export const tools = [
     },
   },
   {
-    name: 'run_command',
+    name: ToolName.RUN_COMMAND,
     description: 'Run a shell command and return its output',
     input_schema: {
       type: 'object',
@@ -56,7 +57,7 @@ export const tools = [
     },
   },
   {
-    name: 'list_files',
+    name: ToolName.LIST_FILES,
     description: 'List files and directories in a given path',
     input_schema: {
       type: 'object',
@@ -75,20 +76,20 @@ export function executeTool(name: string, input: unknown): string {
   const inputObj = input as Record<string, unknown>;
 
   switch (name) {
-    case 'read_file':
+    case ToolName.READ_FILE:
       return readFile(inputObj.path as string);
 
-    case 'edit_file':
+    case ToolName.EDIT_FILE:
       return editFile(
         inputObj.path as string,
         inputObj.old_str as string,
         inputObj.new_str as string
       );
 
-    case 'run_command':
+    case ToolName.RUN_COMMAND:
       return runCommand(inputObj.command as string);
 
-    case 'list_files':
+    case ToolName.LIST_FILES:
       return listFiles(inputObj.path as string);
 
     default:
