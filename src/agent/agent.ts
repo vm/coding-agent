@@ -1,8 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { tools, executeTool } from '../tools/index';
 import type { MessageParam, AgentResponse, ToolCall, ContentBlock, ToolResultBlockParam } from './types';
+import { cwd } from 'node:process';
 
-const SYSTEM_PROMPT = `You are a helpful coding assistant with access to tools for reading, editing, and creating files, listing directory contents, and running shell commands.
+const getSystemPrompt = (): string => {
+  const workingDir = cwd();
+  return `You are a helpful coding assistant with access to tools for reading, editing, and creating files, listing directory contents, and running shell commands.
+
+Current working directory: ${workingDir}
+
+All file paths should be relative to this directory unless the user specifies an absolute path. When the user mentions "this directory" or "current directory", they mean: ${workingDir}
 
 When the user asks you to perform a task:
 1. Break it down into steps
@@ -10,6 +17,7 @@ When the user asks you to perform a task:
 3. Explain what you're doing as you go
 
 Always prefer editing existing files over creating new ones when appropriate. Be concise but informative.`;
+};
 
 export class Agent {
   private client: Anthropic;
@@ -33,7 +41,7 @@ export class Agent {
       const response = await this.client.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 8096,
-        system: SYSTEM_PROMPT,
+        system: getSystemPrompt(),
         tools: tools,
         messages: this.conversation,
       });

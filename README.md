@@ -20,14 +20,30 @@ A CLI-based coding assistant powered by Claude (Anthropic) that can read, edit, 
 
 **Start the agent:**
 ```bash
+# Navigate to the project directory you want to work on
+cd /path/to/your/project
+
+# Start the agent
 bun start
 ```
 
+**Important:** The agent operates in whatever directory you run `bun start` from. The working directory is displayed at the top of the UI when you start the app.
+
 **How to use:**
-1. Type your message in natural language
-2. Press **Enter** to send
-3. The agent will execute tools as needed to complete your request
-4. Press **Ctrl+C** to quit
+1. **Navigate to your project directory** before starting the agent
+2. Type your message in natural language
+3. Press **Enter** to send
+4. The agent will execute tools as needed to complete your request
+5. Press **Ctrl+C** to quit
+
+**Example workflow:**
+```bash
+# Work on a specific project
+cd ~/Projects/my-web-app
+bun start
+
+# Now all file operations happen in ~/Projects/my-web-app
+```
 
 ## Examples
 

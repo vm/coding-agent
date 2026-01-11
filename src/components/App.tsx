@@ -6,6 +6,7 @@ import { ToolCall } from './ToolCall';
 import { Input } from './Input';
 import Spinner from 'ink-spinner';
 import type { ToolCall as ToolCallType } from '../agent/types';
+import { cwd } from 'node:process';
 
 type MessageItem = {
   role: 'user' | 'assistant';
@@ -52,11 +53,22 @@ export function App() {
     }
   };
 
+  const workingDir = cwd();
+
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
         <Text color="cyan" bold>Coding Agent - Claude Assistant</Text>
-        <Text color="gray">Type your message and press Enter to send. Press Ctrl+C to quit.</Text>
+        <Box marginTop={1}>
+          <Text color="yellow" bold>Working Directory: </Text>
+          <Text color="yellow">{workingDir}</Text>
+        </Box>
+        <Text color="gray" marginTop={1}>
+          All file operations and commands will run in this directory.
+        </Text>
+        <Text color="gray" marginTop={1}>
+          Type your message and press Enter to send. Press Ctrl+C to quit.
+        </Text>
         {messages.length === 0 && (
           <Box flexDirection="column" marginTop={1}>
             <Text color="gray">Examples:</Text>
