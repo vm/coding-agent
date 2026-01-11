@@ -6,9 +6,7 @@ import { ToolCall } from './ToolCall';
 import { Input } from './Input';
 import Spinner from 'ink-spinner';
 import type { ToolCall as ToolCallType } from '../agent/types';
-import { cwd, chdir } from 'node:process';
-import { existsSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { cwd } from 'node:process';
 
 type MessageItem = {
   role: 'user' | 'assistant';
@@ -19,7 +17,6 @@ export function App() {
   const { exit } = useApp();
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [toolCalls, setToolCalls] = useState<ToolCallType[]>([]);
-  const [workingDir, setWorkingDir] = useState(() => cwd());
   const [agent] = useState(() => new Agent());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,63 +33,6 @@ export function App() {
   }, [exit]);
 
   const handleSubmit = async (text: string) => {
-    // Handle cd command to change directory
-    const cdMatch = text.trim().match(/^cd\s+(.+)$/i);
-    if (cdMatch) {
-      const newDir = cdMatch[1].trim();
-      try {
-        // Resolve path (handle ~, relative paths, etc.)
-        let resolvedPath: string;
-        if (newDir.startsWith('/')) {
-          // Absolute path
-          resolvedPath = newDir;
-        } else if (newDir.startsWith('~')) {
-          // Home directory
-          resolvedPath = newDir.replace('~', process.env.HOME || '');
-        } else {
-          // Relative path - resolve from current working directory
-          resolvedPath = resolve(workingDir, newDir);
-        }
-        
-        if (!existsSync(resolvedPath)) {
-          setMessages(prev => [...prev, { role: 'user', content: text }]);
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: `Error: Directory "${resolvedPath}" does not exist.` 
-          }]);
-          return;
-        }
-
-        const stats = statSync(resolvedPath);
-        if (!stats.isDirectory()) {
-          setMessages(prev => [...prev, { role: 'user', content: text }]);
-          setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: `Error: "${resolvedPath}" is not a directory.` 
-          }]);
-          return;
-        }
-
-        chdir(resolvedPath);
-        const newWorkingDir = cwd();
-        setWorkingDir(newWorkingDir);
-        setMessages(prev => [...prev, { role: 'user', content: text }]);
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `Changed working directory to: ${newWorkingDir}` 
-        }]);
-        return;
-      } catch (err) {
-        setMessages(prev => [...prev, { role: 'user', content: text }]);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `Error changing directory: ${errorMessage}` 
-        }]);
-        return;
-      }
-    }
-
     // Add user message
     setMessages(prev => [...prev, { role: 'user', content: text }]);
     setIsLoading(true);
@@ -113,6 +53,8 @@ export function App() {
     }
   };
 
+  const workingDir = cwd();
+
   return (
     <Box flexDirection="column">
       <Box marginBottom={1}>
@@ -125,12 +67,11 @@ export function App() {
           All file operations and commands will run in this directory.
         </Text>
         <Text color="gray" marginTop={1}>
-          Type your message and press Enter to send. Use "cd /path" to change directory. Press Ctrl+C to quit.
+          Type your message and press Enter to send. Press Ctrl+C to quit.
         </Text>
         {messages.length === 0 && (
           <Box flexDirection="column" marginTop={1}>
             <Text color="gray">Examples:</Text>
-            <Text color="gray">  • "cd /path/to/project" - Change working directory</Text>
             <Text color="gray">  • "Create a file called hello.txt with 'Hello World'"</Text>
             <Text color="gray">  • "List all files in the current directory"</Text>
             <Text color="gray">  • "Read the package.json file"</Text>
