@@ -77,5 +77,10 @@ describe('editFile', () => {
     const newContent = readFileSync(filePath, 'utf-8');
     expect(newContent).toBe('Hello!');
   });
+
+  // Note: Testing non-Error catch blocks (line 45) is difficult because:
+  // 1. Node.js/Bun always throws Error instances
+  // 2. fs module properties are readonly and can't be mocked
+  // This defensive code path is very unlikely to be hit in practice
 });
 

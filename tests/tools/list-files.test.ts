@@ -51,5 +51,10 @@ describe('listFiles', () => {
     expect(result).toContain('subdir/');
     expect(result).toContain('file.txt');
   });
+
+  // Note: Testing non-Error catch blocks (line 29) is difficult because:
+  // 1. Node.js/Bun always throws Error instances
+  // 2. fs module properties are readonly and can't be mocked
+  // This defensive code path is very unlikely to be hit in practice
 });
 

@@ -101,9 +101,29 @@ bun test
 # Run tests in watch mode
 bun test --watch
 
+# Run tests with coverage
+bun test --coverage
+
+
 # Run specific test file
 bun test src/tools/read-file.test.ts
 ```
+
+### Test Coverage
+
+The project maintains high test coverage:
+- **Functions**: 98.33% (threshold: 80%)
+- **Lines**: 94.31% (threshold: 80%)
+
+Coverage reports are generated automatically when running `bun test --coverage`. Coverage thresholds (80% for functions and lines) are enforced via `bunfig.toml` - tests will fail if coverage drops below the threshold.
+
+**Coverage by file:**
+- `src/agent/agent.ts` - 90% functions, 100% lines
+- `src/tools/edit-file.ts` - 100% functions, 87.88% lines
+- `src/tools/index.ts` - 100% functions, 100% lines
+- `src/tools/list-files.ts` - 100% functions, 95.45% lines
+- `src/tools/read-file.ts` - 100% functions, 90% lines
+- `src/tools/run-command.ts` - 100% functions, 92.54% lines
 
 ### Project Structure
 ```
@@ -118,6 +138,7 @@ src/
 - `bun start` - Start the application
 - `bun test` - Run test suite
 - `bun test --watch` - Run tests in watch mode
+- `bun test --coverage` - Run tests with coverage report
 
 ## Architecture
 

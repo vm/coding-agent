@@ -173,22 +173,21 @@ export function App() {
 
       {/* Messages and Tool Calls Section */}
       <Box flexDirection="column" paddingX={2} paddingY={1} flexGrow={1}>
-        {messages.map((msg, idx) => (
-          <Box key={idx} flexDirection="column" marginBottom={msg.role === 'assistant' ? 2 : 1}>
-            <Message role={msg.role} content={msg.content} />
-            {msg.tokenUsage && (
-              <Box marginTop={0} marginLeft={2}>
-                <Text color="gray" dimColor wrap="wrap">
-                  ({msg.tokenUsage.input} in / {msg.tokenUsage.output} out tokens)
-                </Text>
+        {messages.map((msg, idx) => {
+          // Only show user messages here - assistant messages will be shown after tool calls
+          if (msg.role === 'user') {
+            return (
+              <Box key={idx} flexDirection="column" marginBottom={1}>
+                <Message role={msg.role} content={msg.content} />
               </Box>
-            )}
-          </Box>
-        ))}
+            );
+          }
+          return null;
+        })}
         
-        {/* Active Tool Calls (running) */}
+        {/* Active Tool Calls (running) - show individually */}
         {activeToolCalls.length > 0 && (
-          <Box flexDirection="column" marginTop={messages.length > 0 ? 1 : 0} marginBottom={1}>
+          <Box flexDirection="column" marginTop={messages.filter(m => m.role === 'user').length > 0 ? 1 : 0} marginBottom={1}>
             {activeToolCalls.map((toolCall, idx) => (
               <Box key={idx} marginBottom={1}>
                 <ToolCall
@@ -201,9 +200,48 @@ export function App() {
           </Box>
         )}
         
-        {/* Completed Tool Calls */}
-        {toolCalls.length > 0 && (
-          <Box flexDirection="column" marginTop={(messages.length > 0 || activeToolCalls.length > 0) ? 1 : 0} marginBottom={1}>
+        {/* Completed Tool Calls - show grouped when done */}
+        {toolCalls.length > 0 && activeToolCalls.length === 0 && (
+          <Box flexDirection="column" marginTop={(messages.filter(m => m.role === 'user').length > 0 || activeToolCalls.length > 0) ? 1 : 0} marginBottom={1}>
+            {(() => {
+              // Group tool calls by name and file_path (if present)
+              const grouped = new Map<string, { toolCall: ToolCallType; count: number }>();
+              
+              for (const toolCall of toolCalls) {
+                // Create a key from tool name and file_path if it exists
+                const filePath = toolCall.input.file_path as string | undefined;
+                const key = filePath 
+                  ? `${toolCall.name}:${filePath}`
+                  : `${toolCall.name}:${JSON.stringify(toolCall.input)}`;
+                
+                if (grouped.has(key)) {
+                  const existing = grouped.get(key)!;
+                  existing.count++;
+                  // Use the latest tool call's result
+                  existing.toolCall = toolCall;
+                } else {
+                  grouped.set(key, { toolCall, count: 1 });
+                }
+              }
+              
+              return Array.from(grouped.values()).map(({ toolCall, count }, idx) => (
+                <Box key={idx} marginBottom={1}>
+                  <ToolCall
+                    name={toolCall.name}
+                    input={toolCall.input}
+                    status={toolCall.error ? 'error' : 'done'}
+                    result={toolCall.result}
+                    count={count > 1 ? count : undefined}
+                  />
+                </Box>
+              ));
+            })()}
+          </Box>
+        )}
+        
+        {/* Show completed tool calls individually while still running */}
+        {toolCalls.length > 0 && activeToolCalls.length > 0 && (
+          <Box flexDirection="column" marginTop={(messages.filter(m => m.role === 'user').length > 0 || activeToolCalls.length > 0) ? 1 : 0} marginBottom={1}>
             {toolCalls.map((toolCall, idx) => (
               <Box key={idx} marginBottom={1}>
                 <ToolCall
@@ -216,6 +254,25 @@ export function App() {
             ))}
           </Box>
         )}
+        
+        {/* Assistant Messages - shown at the bottom after tool calls */}
+        {messages.map((msg, idx) => {
+          if (msg.role === 'assistant') {
+            return (
+              <Box key={idx} flexDirection="column" marginTop={1} marginBottom={2}>
+                <Message role={msg.role} content={msg.content} />
+                {msg.tokenUsage && (
+                  <Box marginTop={0} marginLeft={2}>
+                    <Text color="gray" dimColor wrap="wrap">
+                      ({msg.tokenUsage.input} in / {msg.tokenUsage.output} out tokens)
+                    </Text>
+                  </Box>
+                )}
+              </Box>
+            );
+          }
+          return null;
+        })}
         
         {isLoading && activeToolCalls.length === 0 && (
           <Box marginTop={1}>

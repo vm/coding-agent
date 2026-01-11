@@ -6,6 +6,7 @@ type Props = {
   input?: Record<string, unknown>;
   status: 'running' | 'done' | 'error';
   result?: string;
+  count?: number;
 };
 
 function formatToolName(name: string): string {
@@ -20,7 +21,7 @@ function formatFilePath(path: string): string {
   return path;
 }
 
-export function ToolCall({ name, input, status, result }: Props) {
+export function ToolCall({ name, input, status, result, count }: Props) {
   const displayName = formatToolName(name);
   
   if (status === 'running') {
@@ -29,6 +30,9 @@ export function ToolCall({ name, input, status, result }: Props) {
         <Box>
           <Text color="gray" dimColor>
             <Spinner type="dots" /> <Text>{displayName}</Text>
+            {count && count > 1 && (
+              <Text color="gray" dimColor> ({count})</Text>
+            )}
           </Text>
         </Box>
         {input && Object.keys(input).length > 0 && (
@@ -57,6 +61,9 @@ export function ToolCall({ name, input, status, result }: Props) {
         <Box>
           <Text color="red" dimColor>✗ </Text>
           <Text color="red">{displayName}</Text>
+          {count && count > 1 && (
+            <Text color="red" dimColor> ({count}×)</Text>
+          )}
         </Box>
         {result && (
           <Box paddingLeft={4} marginTop={0}>
@@ -73,6 +80,9 @@ export function ToolCall({ name, input, status, result }: Props) {
       <Box>
         <Text color="gray" dimColor>✓ </Text>
         <Text color="gray">{displayName}</Text>
+        {count && count > 1 && (
+          <Text color="gray" dimColor> ({count}×)</Text>
+        )}
       </Box>
         {input && Object.keys(input).length > 0 && (
           <Box paddingLeft={4} marginTop={0} flexDirection="column">

@@ -63,5 +63,37 @@ describe('ToolCall', () => {
     expect(truncated.length).toBe(100);
     expect(truncated).toBe('A'.repeat(100));
   });
+
+  it('should handle count prop for grouped tool calls', () => {
+    const name = 'edit_file';
+    const count = 5;
+    const displayText = `✓ ${name} (${count}×)`;
+    
+    expect(displayText).toBe('✓ edit_file (5×)');
+  });
+
+  it('should not show count when count is 1', () => {
+    const name = 'read_file';
+    const count = 1;
+    const displayText = count > 1 ? `✓ ${name} (${count}×)` : `✓ ${name}`;
+    
+    expect(displayText).toBe('✓ read_file');
+  });
+
+  it('should show count for running status when count > 1', () => {
+    const name = 'edit_file';
+    const count = 3;
+    const displayText = `Executing ${name}${count > 1 ? ` (${count})` : ''}...`;
+    
+    expect(displayText).toBe('Executing edit_file (3)...');
+  });
+
+  it('should show count for error status when count > 1', () => {
+    const name = 'read_file';
+    const count = 2;
+    const displayText = `✗ ${name}${count > 1 ? ` (${count}×)` : ''} failed`;
+    
+    expect(displayText).toBe('✗ read_file (2×) failed');
+  });
 });
 

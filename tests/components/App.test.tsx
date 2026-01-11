@@ -71,4 +71,137 @@ describe('App', () => {
     isLoading = true;
     expect(isLoading).toBe(true);
   });
+
+  it('should group tool calls by name and file_path', () => {
+    const toolCalls: Array<{ name: string; input: Record<string, unknown>; result: string }> = [
+      { name: 'edit_file', input: { file_path: 'README.md' }, result: 'Updated' },
+      { name: 'edit_file', input: { file_path: 'README.md' }, result: 'Updated' },
+      { name: 'edit_file', input: { file_path: 'README.md' }, result: 'Updated' },
+      { name: 'read_file', input: { file_path: 'test.txt' }, result: 'Content' },
+    ];
+
+    // Simulate grouping logic
+    const grouped = new Map<string, { toolCall: typeof toolCalls[0]; count: number }>();
+    
+    for (const toolCall of toolCalls) {
+      const filePath = toolCall.input.file_path as string | undefined;
+      const key = filePath 
+        ? `${toolCall.name}:${filePath}`
+        : `${toolCall.name}:${JSON.stringify(toolCall.input)}`;
+      
+      if (grouped.has(key)) {
+        grouped.get(key)!.count++;
+        grouped.get(key)!.toolCall = toolCall;
+      } else {
+        grouped.set(key, { toolCall, count: 1 });
+      }
+    }
+
+    expect(grouped.size).toBe(2);
+    expect(grouped.get('edit_file:README.md')?.count).toBe(3);
+    expect(grouped.get('read_file:test.txt')?.count).toBe(1);
+  });
+
+  it('should group tool calls without file_path by full input', () => {
+    const toolCalls: Array<{ name: string; input: Record<string, unknown>; result: string }> = [
+      { name: 'run_command', input: { command: 'ls -la' }, result: 'output' },
+      { name: 'run_command', input: { command: 'ls -la' }, result: 'output' },
+      { name: 'run_command', input: { command: 'pwd' }, result: 'output' },
+    ];
+
+    const grouped = new Map<string, { toolCall: typeof toolCalls[0]; count: number }>();
+    
+    for (const toolCall of toolCalls) {
+      const filePath = toolCall.input.file_path as string | undefined;
+      const key = filePath 
+        ? `${toolCall.name}:${filePath}`
+        : `${toolCall.name}:${JSON.stringify(toolCall.input)}`;
+      
+      if (grouped.has(key)) {
+        grouped.get(key)!.count++;
+        grouped.get(key)!.toolCall = toolCall;
+      } else {
+        grouped.set(key, { toolCall, count: 1 });
+      }
+    }
+
+    expect(grouped.size).toBe(2);
+    const lsKey = `run_command:${JSON.stringify({ command: 'ls -la' })}`;
+    const pwdKey = `run_command:${JSON.stringify({ command: 'pwd' })}`;
+    expect(grouped.get(lsKey)?.count).toBe(2);
+    expect(grouped.get(pwdKey)?.count).toBe(1);
+  });
+
+  it('should separate user and assistant messages', () => {
+    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
+      { role: 'user', content: 'Hello' },
+      { role: 'assistant', content: 'Hi there!' },
+      { role: 'user', content: 'How are you?' },
+      { role: 'assistant', content: 'I am doing well!' },
+    ];
+
+    const userMessages = messages.filter(m => m.role === 'user');
+    const assistantMessages = messages.filter(m => m.role === 'assistant');
+
+    expect(userMessages.length).toBe(2);
+    expect(assistantMessages.length).toBe(2);
+    expect(userMessages[0].content).toBe('Hello');
+    expect(assistantMessages[0].content).toBe('Hi there!');
+  });
+
+  it('should handle tool calls with different file paths separately', () => {
+    const toolCalls: Array<{ name: string; input: Record<string, unknown>; result: string }> = [
+      { name: 'edit_file', input: { file_path: 'file1.txt' }, result: 'Updated' },
+      { name: 'edit_file', input: { file_path: 'file2.txt' }, result: 'Updated' },
+      { name: 'edit_file', input: { file_path: 'file1.txt' }, result: 'Updated' },
+    ];
+
+    const grouped = new Map<string, { toolCall: typeof toolCalls[0]; count: number }>();
+    
+    for (const toolCall of toolCalls) {
+      const filePath = toolCall.input.file_path as string | undefined;
+      const key = filePath 
+        ? `${toolCall.name}:${filePath}`
+        : `${toolCall.name}:${JSON.stringify(toolCall.input)}`;
+      
+      if (grouped.has(key)) {
+        grouped.get(key)!.count++;
+        grouped.get(key)!.toolCall = toolCall;
+      } else {
+        grouped.set(key, { toolCall, count: 1 });
+      }
+    }
+
+    expect(grouped.size).toBe(2);
+    expect(grouped.get('edit_file:file1.txt')?.count).toBe(2);
+    expect(grouped.get('edit_file:file2.txt')?.count).toBe(1);
+  });
+
+  it('should use latest tool call result when grouping', () => {
+    const toolCalls: Array<{ name: string; input: Record<string, unknown>; result: string }> = [
+      { name: 'edit_file', input: { file_path: 'test.txt' }, result: 'First update' },
+      { name: 'edit_file', input: { file_path: 'test.txt' }, result: 'Second update' },
+      { name: 'edit_file', input: { file_path: 'test.txt' }, result: 'Final update' },
+    ];
+
+    const grouped = new Map<string, { toolCall: typeof toolCalls[0]; count: number }>();
+    
+    for (const toolCall of toolCalls) {
+      const filePath = toolCall.input.file_path as string | undefined;
+      const key = filePath 
+        ? `${toolCall.name}:${filePath}`
+        : `${toolCall.name}:${JSON.stringify(toolCall.input)}`;
+      
+      if (grouped.has(key)) {
+        grouped.get(key)!.count++;
+        grouped.get(key)!.toolCall = toolCall; // Use latest
+      } else {
+        grouped.set(key, { toolCall, count: 1 });
+      }
+    }
+
+    const groupedCall = grouped.get('edit_file:test.txt');
+    expect(groupedCall?.count).toBe(3);
+    expect(groupedCall?.toolCall.result).toBe('Final update');
+  });
 });

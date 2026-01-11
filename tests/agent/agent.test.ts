@@ -219,6 +219,107 @@ describe('Agent', () => {
     });
   });
 
+  describe('Sequential tool execution', () => {
+    it('executes tools sequentially when parallel is disabled', async () => {
+      // First call: returns tool_use
+      mockCreate.mockResolvedValueOnce({
+        content: [{
+          type: 'tool_use',
+          id: 'tool_1',
+          name: 'read_file',
+          input: { path: 'test.txt' }
+        }],
+        stop_reason: 'tool_use',
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+        },
+      });
+
+      // Second call: returns another tool_use
+      mockCreate.mockResolvedValueOnce({
+        content: [{
+          type: 'tool_use',
+          id: 'tool_2',
+          name: 'read_file',
+          input: { path: 'test2.txt' }
+        }],
+        stop_reason: 'tool_use',
+        usage: {
+          input_tokens: 20,
+          output_tokens: 5,
+        },
+      });
+
+      // Third call: returns final text
+      mockCreate.mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'Done' }],
+        stop_reason: 'end_turn',
+        usage: {
+          input_tokens: 30,
+          output_tokens: 10,
+        },
+      });
+
+      const agent = new Agent(mockClient, { enableParallelTools: false });
+      const response = await agent.chat('Read two files');
+
+      expect(response.text).toBe('Done');
+      expect(response.toolCalls).toHaveLength(2);
+      expect(mockCreate).toHaveBeenCalledTimes(3);
+    });
+
+    it('executes single tool sequentially even when parallel is enabled', async () => {
+      mockCreate.mockResolvedValueOnce({
+        content: [{
+          type: 'tool_use',
+          id: 'tool_1',
+          name: 'read_file',
+          input: { path: 'test.txt' }
+        }],
+        stop_reason: 'tool_use',
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+        },
+      });
+
+      mockCreate.mockResolvedValueOnce({
+        content: [{ type: 'text', text: 'File read' }],
+        stop_reason: 'end_turn',
+        usage: {
+          input_tokens: 20,
+          output_tokens: 10,
+        },
+      });
+
+      const agent = new Agent(mockClient, { enableParallelTools: true });
+      const response = await agent.chat('Read test.txt');
+
+      expect(response.text).toBe('File read');
+      expect(response.toolCalls).toHaveLength(1);
+    });
+  });
+
+  describe('Response handling', () => {
+    it('handles response with no text blocks (fallback)', async () => {
+      mockCreate.mockResolvedValueOnce({
+        content: [], // No content blocks
+        stop_reason: 'end_turn',
+        usage: {
+          input_tokens: 10,
+          output_tokens: 5,
+        },
+      });
+
+      const agent = new Agent(mockClient);
+      const response = await agent.chat('Test');
+
+      expect(response.text).toBe('');
+      expect(response.toolCalls).toHaveLength(0);
+    });
+  });
+
   describe('Error handling', () => {
     it('handles API errors gracefully', async () => {
       // Mock rejection for all retry attempts (default is 3)
@@ -247,6 +348,17 @@ describe('Agent', () => {
 
       expect(response.error).toBe('max_tokens');
       expect(response.text).toContain('truncated');
+    });
+
+    it('handles non-Error exceptions in API retry', async () => {
+      // Mock a non-Error exception (though unlikely, tests the fallback)
+      mockCreate.mockRejectedValue('String error');
+
+      const agent = new Agent(mockClient, { maxRetries: 1 });
+      const response = await agent.chat('Test');
+
+      expect(response.error).toBeDefined();
+      expect(response.text).toContain('An error occurred');
     });
   });
 });

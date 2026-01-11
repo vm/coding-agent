@@ -1,0 +1,12 @@
+[test]
+# Coverage configuration
+# Require 80% coverage (functions and lines)
+# Bun will exit with non-zero code if coverage falls below this threshold
+coverageThreshold = 0.8
+coveragePathIgnorePatterns = [
+  "**/*.test.ts",
+  "**/*.test.tsx",
+  "tests/**",
+  "node_modules/**"
+]
+
