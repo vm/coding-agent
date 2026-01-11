@@ -111,16 +111,44 @@ export function App() {
 
   const { reads, edits, lists, runs } = groupedToolCalls();
 
+  // Moon ASCII art
+  const moon = [
+    '            .  ·  ˚',
+    '       ·  ✦    ˚',
+    '    ˚        _..._     ✦',
+    '  ✦       .\'     `.      ˚',
+    '         /    .-"-.\\',
+    '   ˚    |   /     \\ |   ·',
+    '        ;  ;   __  ;|',
+    '   ·    |  |  (  ) ||  ✦',
+    '        ;  ;   ‾‾  ;|',
+    '    ✦   |   \\     / |',
+    '   ˚     \\    `-´-./    ·',
+    '          `..___.\'',
+    '       ˚        ✦    ·',
+    '    ·    ˚   .   ✦',
+  ];
+
   return (
     <Box flexDirection="column" height={terminalHeight}>
-      {/* Header */}
+      {/* Start Screen */}
       {messages.length === 0 && (
-        <Box flexDirection="column" paddingX={2} paddingTop={1}>
-          <Box>
-            <Text color="cyan" bold>⬢</Text>
-            <Text> </Text>
+        <Box flexDirection="column" alignItems="center" justifyContent="center" flexGrow={1}>
+          {/* Moon art */}
+          <Box flexDirection="column" marginBottom={1}>
+            {moon.map((line, i) => (
+              <Text key={i} color={i < 2 || i > 11 ? 'gray' : 'white'} dimColor={i < 2 || i > 11}>
+                {line}
+              </Text>
+            ))}
+          </Box>
+          
+          {/* Title */}
+          <Box marginTop={1}>
             <Text color="white" bold>Nila Code</Text>
           </Box>
+          
+          {/* Subtitle */}
           <Box marginTop={1}>
             <Text color="gray" dimColor>{workingDir}</Text>
           </Box>
