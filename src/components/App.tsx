@@ -120,6 +120,8 @@ export function App() {
     '╚═╝  ╚═══╝╚═╝╚══════╝╚═╝  ╚═╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝',
   ];
 
+  const gradientColors = ['#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#5f27cd', '#ff9ff3'];
+
   return (
     <Box flexDirection="column" height={terminalHeight}>
       {/* Start Screen */}
@@ -128,7 +130,7 @@ export function App() {
           {/* Banner */}
           <Box flexDirection="column">
             {banner.map((line, i) => (
-              <Text key={i} color="cyan">{line}</Text>
+              <Text key={i} color={gradientColors[i]}>{line}</Text>
             ))}
           </Box>
           
