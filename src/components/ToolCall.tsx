@@ -6,6 +6,7 @@ type Props = {
   input?: Record<string, unknown>;
   status: 'running' | 'done' | 'error';
   result?: string;
+  showPreview?: boolean;
 };
 
 function getFileName(path: string): string {
@@ -33,7 +34,56 @@ function getDiffStats(input: Record<string, unknown>): { added: number; removed:
   return { added, removed };
 }
 
-export function ToolCall({ name, input, status, result }: Props) {
+const MAX_PREVIEW_LINES = 6;
+
+function DiffPreview({ oldStr, newStr }: { oldStr: string; newStr: string }) {
+  const oldLines = oldStr ? oldStr.split('\n') : [];
+  const newLines = newStr ? newStr.split('\n') : [];
+  
+  // Build a simple diff view
+  const diffLines: Array<{ type: 'remove' | 'add' | 'context'; content: string }> = [];
+  
+  // Show removed lines
+  for (const line of oldLines) {
+    diffLines.push({ type: 'remove', content: line });
+  }
+  
+  // Show added lines
+  for (const line of newLines) {
+    diffLines.push({ type: 'add', content: line });
+  }
+  
+  // Limit to MAX_PREVIEW_LINES
+  const truncated = diffLines.length > MAX_PREVIEW_LINES;
+  const displayLines = diffLines.slice(0, MAX_PREVIEW_LINES);
+  
+  if (displayLines.length === 0) return null;
+  
+  return (
+    <Box flexDirection="column" marginLeft={2} marginTop={0}>
+      <Box flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
+        {displayLines.map((line, idx) => (
+          <Box key={idx}>
+            <Text color={line.type === 'remove' ? 'red' : line.type === 'add' ? 'green' : 'gray'}>
+              {line.type === 'remove' ? '- ' : line.type === 'add' ? '+ ' : '  '}
+            </Text>
+            <Text 
+              color={line.type === 'remove' ? 'red' : line.type === 'add' ? 'green' : 'white'} 
+              dimColor={line.type === 'remove'}
+            >
+              {line.content.slice(0, 60)}{line.content.length > 60 ? '…' : ''}
+            </Text>
+          </Box>
+        ))}
+        {truncated && (
+          <Text color="gray" dimColor>  … {diffLines.length - MAX_PREVIEW_LINES} more lines</Text>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
+export function ToolCall({ name, input, status, result, showPreview = true }: Props) {
   const safeInput = input || {};
   const filePath = safeInput.file_path ? String(safeInput.file_path) : null;
   const directory = safeInput.directory ? String(safeInput.directory) : null;
@@ -47,6 +97,11 @@ export function ToolCall({ name, input, status, result }: Props) {
   
   // Get diff stats for edits
   const diffStats = isEdit ? getDiffStats(safeInput) : null;
+  
+  // Get old/new strings for preview
+  const oldStr = safeInput.old_str as string | undefined;
+  const newStr = safeInput.new_str as string | undefined;
+  const hasEditContent = isEdit && (oldStr || newStr);
   
   // Choose icon based on tool type
   const getIcon = () => {
@@ -96,17 +151,22 @@ export function ToolCall({ name, input, status, result }: Props) {
   }
   
   return (
-    <Box>
-      {icon}
-      <Text> </Text>
-      <Text color="white">{label}</Text>
-      {diffStats && (
-        <>
-          <Text> </Text>
-          <Text color="green">+{diffStats.added}</Text>
-          <Text> </Text>
-          <Text color="red">-{diffStats.removed}</Text>
-        </>
+    <Box flexDirection="column">
+      <Box>
+        {icon}
+        <Text> </Text>
+        <Text color="white">{label}</Text>
+        {diffStats && (
+          <>
+            <Text> </Text>
+            <Text color="green">+{diffStats.added}</Text>
+            <Text> </Text>
+            <Text color="red">-{diffStats.removed}</Text>
+          </>
+        )}
+      </Box>
+      {showPreview && hasEditContent && status === 'done' && (
+        <DiffPreview oldStr={oldStr || ''} newStr={newStr || ''} />
       )}
     </Box>
   );
