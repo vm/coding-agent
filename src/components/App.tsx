@@ -142,7 +142,7 @@ export function App() {
   const workingDir = cwd();
 
   return (
-    <Box flexDirection="column" height={terminalHeight} padding={0}>
+    <Box flexDirection="column" padding={0}>
       {/* Header Section */}
       {messages.length === 0 && (
         <Box flexDirection="column" paddingX={2} paddingY={1} borderBottom borderStyle="single" borderColor="gray">
@@ -150,14 +150,14 @@ export function App() {
             <Text color="white" bold>Nila Code</Text>
           </Box>
           <Box marginBottom={1}>
-            <Text color="gray" dimColor>{workingDir}</Text>
+            <Text color="gray" dimColor wrap="wrap">{workingDir}</Text>
           </Box>
           <Box flexDirection="column" marginTop={1}>
             <Text color="gray" dimColor>Examples:</Text>
-            <Text color="gray" dimColor>  • Create a file called hello.txt with 'Hello World'</Text>
-            <Text color="gray" dimColor>  • List all files in the current directory</Text>
-            <Text color="gray" dimColor>  • Read the package.json file</Text>
-            <Text color="gray" dimColor>  • Run the command: ls -la</Text>
+            <Text color="gray" dimColor wrap="wrap">  • Create a file called hello.txt with 'Hello World'</Text>
+            <Text color="gray" dimColor wrap="wrap">  • List all files in the current directory</Text>
+            <Text color="gray" dimColor wrap="wrap">  • Read the package.json file</Text>
+            <Text color="gray" dimColor wrap="wrap">  • Run the command: ls -la</Text>
           </Box>
         </Box>
       )}
@@ -165,7 +165,7 @@ export function App() {
       {/* Token Usage Display */}
       {totalTokens.input > 0 && (
         <Box paddingX={2} paddingY={0} borderBottom borderStyle="single" borderColor="gray">
-          <Text color="gray" dimColor>
+          <Text color="gray" dimColor wrap="wrap">
             Tokens: {totalTokens.input.toLocaleString()} in / {totalTokens.output.toLocaleString()} out
           </Text>
         </Box>
@@ -178,7 +178,7 @@ export function App() {
             <Message role={msg.role} content={msg.content} />
             {msg.tokenUsage && (
               <Box marginTop={0} marginLeft={2}>
-                <Text color="gray" dimColor>
+                <Text color="gray" dimColor wrap="wrap">
                   ({msg.tokenUsage.input} in / {msg.tokenUsage.output} out tokens)
                 </Text>
               </Box>
@@ -188,7 +188,7 @@ export function App() {
         
         {/* Active Tool Calls (running) */}
         {activeToolCalls.length > 0 && (
-          <Box flexDirection="column" marginTop={1} marginBottom={1}>
+          <Box flexDirection="column" marginTop={messages.length > 0 ? 1 : 0} marginBottom={1}>
             {activeToolCalls.map((toolCall, idx) => (
               <Box key={idx} marginBottom={1}>
                 <ToolCall
@@ -203,7 +203,7 @@ export function App() {
         
         {/* Completed Tool Calls */}
         {toolCalls.length > 0 && (
-          <Box flexDirection="column" marginTop={1} marginBottom={1}>
+          <Box flexDirection="column" marginTop={(messages.length > 0 || activeToolCalls.length > 0) ? 1 : 0} marginBottom={1}>
             {toolCalls.map((toolCall, idx) => (
               <Box key={idx} marginBottom={1}>
                 <ToolCall
@@ -219,13 +219,13 @@ export function App() {
         
         {isLoading && activeToolCalls.length === 0 && (
           <Box marginTop={1}>
-            <Text color="gray" dimColor>Thinking...</Text>
+            <Text color="gray" dimColor wrap="wrap">Thinking...</Text>
           </Box>
         )}
         {error && (
-          <Box marginTop={1}>
-            <Text color="red" bold>Error: </Text>
-            <Text color="red">{error}</Text>
+          <Box marginTop={1} flexDirection="column">
+            <Text color="red" bold wrap="wrap">Error: </Text>
+            <Text color="red" wrap="wrap">{error}</Text>
           </Box>
         )}
       </Box>

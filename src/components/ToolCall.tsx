@@ -32,15 +32,19 @@ export function ToolCall({ name, input, status, result }: Props) {
           </Text>
         </Box>
         {input && Object.keys(input).length > 0 && (
-          <Box paddingLeft={4} marginTop={0}>
-            <Text color="gray" dimColor>
-              {Object.entries(input).slice(0, 2).map(([key, value]) => {
-                const val = typeof value === 'string' ? value : JSON.stringify(value);
-                const displayVal = val.length > 40 ? val.substring(0, 40) + '...' : val;
-                return `${key}: ${displayVal}`;
-              }).join('\n')}
-              {Object.keys(input).length > 2 ? '\n...' : ''}
-            </Text>
+          <Box paddingLeft={4} marginTop={0} flexDirection="column">
+            {Object.entries(input).slice(0, 2).map(([key, value]) => {
+              const val = typeof value === 'string' ? value : JSON.stringify(value);
+              const displayVal = val.length > 40 ? val.substring(0, 40) + '...' : val;
+              return (
+                <Text key={key} color="gray" dimColor wrap="wrap">
+                  {key}: {displayVal}
+                </Text>
+              );
+            })}
+            {Object.keys(input).length > 2 && (
+              <Text color="gray" dimColor>...</Text>
+            )}
           </Box>
         )}
       </Box>
@@ -70,22 +74,22 @@ export function ToolCall({ name, input, status, result }: Props) {
         <Text color="gray" dimColor>✓ </Text>
         <Text color="gray">{displayName}</Text>
       </Box>
-      {input && Object.keys(input).length > 0 && (
-        <Box paddingLeft={4} marginTop={0}>
-          <Text color="gray" dimColor>
+        {input && Object.keys(input).length > 0 && (
+          <Box paddingLeft={4} marginTop={0} flexDirection="column">
             {Object.entries(input).slice(0, 2).map(([key, value]) => {
               const val = typeof value === 'string' ? formatFilePath(value) : JSON.stringify(value);
               const displayVal = val.length > 50 ? val.substring(0, 50) + '...' : val;
               return (
-                <Text key={key}>
+                <Text key={key} wrap="wrap">
                   <Text color="cyan" dimColor>{key}</Text>: {displayVal}
                 </Text>
               );
             })}
-            {Object.keys(input).length > 2 && <Text>...</Text>}
-          </Text>
-        </Box>
-      )}
+            {Object.keys(input).length > 2 && (
+              <Text color="gray" dimColor>...</Text>
+            )}
+          </Box>
+        )}
       {result && result.length > 0 && (
         <Box paddingLeft={4} marginTop={0}>
           <Text color="gray" dimColor wrap="wrap">

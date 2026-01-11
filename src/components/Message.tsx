@@ -14,11 +14,11 @@ export function Message({ role, content }: Props) {
   return (
     <Box flexDirection="column" paddingX={1} marginBottom={1}>
       <Box marginBottom={0}>
-        <Text color={labelColor} bold>
+        <Text color={labelColor} bold wrap="wrap">
           {isUser ? 'You' : 'Claude'}
         </Text>
       </Box>
-      <Box paddingLeft={2} marginTop={0}>
+      <Box paddingLeft={2} marginTop={0} flexDirection="column">
         <FormattedText content={content} />
       </Box>
     </Box>

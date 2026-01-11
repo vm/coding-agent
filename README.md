@@ -1,19 +1,19 @@
-# Nila Code 🤖
+# Nila Code
 
 A powerful CLI-based coding assistant powered by Claude (Anthropic) that can read, edit, and create files, list directories, and run shell commands. Built with TypeScript, React (Ink), and Bun for a blazingly fast development experience.
 
-## ✨ Features
+## Features
 
-- 🔧 **File Operations** - Read, edit, create, and manage files with natural language
-- 📁 **Directory Navigation** - List and browse directory contents
-- ⚡ **Command Execution** - Run shell commands and scripts
-- 💬 **Conversational Interface** - Maintains context across multiple interactions
-- 🔍 **Tool Visibility** - Real-time feedback on executed operations
-- 📊 **Token Usage Tracking** - Monitor API usage with detailed statistics
-- 🎨 **Beautiful Terminal UI** - Clean, responsive interface built with React Ink
-- 🧪 **Test-Driven Development** - Comprehensive test coverage for reliability
+- **File Operations** - Read, edit, create, and manage files with natural language
+- **Directory Navigation** - List and browse directory contents
+- **Command Execution** - Run shell commands and scripts
+- **Conversational Interface** - Maintains context across multiple interactions
+- **Tool Visibility** - Real-time feedback on executed operations
+- **Token Usage Tracking** - Monitor API usage with detailed statistics
+- **Beautiful Terminal UI** - Clean, responsive interface built with React Ink
+- **Test-Driven Development** - Comprehensive test coverage for reliability
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - [Bun](https://bun.sh) installed on your system
@@ -43,9 +43,9 @@ A powerful CLI-based coding assistant powered by Claude (Anthropic) that can rea
    bun start
    ```
 
-## 💡 Usage Examples
+## Usage Examples
 
-### 🗂️ File Operations
+### File Operations
 ```
 "Create a React component called Button in src/components/"
 "Read the tsconfig.json file and show me the compiler options"
@@ -53,7 +53,7 @@ A powerful CLI-based coding assistant powered by Claude (Anthropic) that can rea
 "Delete all .log files in the current directory"
 ```
 
-### ⚙️ Development Tasks
+### Development Tasks
 ```
 "Set up a new Express.js project with TypeScript"
 "Run the tests and show me the results"
@@ -61,7 +61,7 @@ A powerful CLI-based coding assistant powered by Claude (Anthropic) that can rea
 "Create a Dockerfile for this Node.js app"
 ```
 
-### 🔧 System Operations
+### System Operations
 ```
 "Show me the git status and recent commits"
 "Install dependencies and start the development server"
@@ -69,14 +69,14 @@ A powerful CLI-based coding assistant powered by Claude (Anthropic) that can rea
 "Check the disk usage of this directory"
 ```
 
-### 🏗️ Multi-step Workflows
+### Multi-step Workflows
 ```
 "Create a new feature branch, add a login component, and run tests"
 "Refactor the user service to use async/await, then update the tests"
 "Generate API documentation and deploy to GitHub Pages"
 ```
 
-## 📖 User Interface
+## User Interface
 
 When you start Nila Code, you'll see:
 
@@ -86,12 +86,12 @@ When you start Nila Code, you'll see:
 - **Token Usage**: API usage statistics (input/output tokens)
 - **Input**: Type your requests in natural language
 
-### 🎛️ Controls
+### Controls
 - **Enter**: Send message
 - **Ctrl+C**: Exit application
 - **↑/↓**: Navigate command history (if implemented)
 
-## 🛠️ Development
+## Development
 
 ### Running Tests
 ```bash
@@ -119,13 +119,13 @@ src/
 - `bun test` - Run test suite
 - `bun test --watch` - Run tests in watch mode
 
-## 🏗️ Architecture
+## Architecture
 
 ### Tech Stack
-- **🟦 TypeScript** - Type safety and developer experience
-- **⚛️ React + Ink** - Component-based terminal UI
-- **🥖 Bun** - Fast runtime, bundler, and test runner
-- **🧠 Claude (Anthropic)** - Advanced AI reasoning capabilities
+- **TypeScript** - Type safety and developer experience
+- **React + Ink** - Component-based terminal UI
+- **Bun** - Fast runtime, bundler, and test runner
+- **Claude (Anthropic)** - Advanced AI reasoning capabilities
 
 ### Core Components
 
@@ -146,7 +146,7 @@ src/
 - **ToolCall** - Tool execution visualization
 - **Input** - Command input interface
 
-## 🔒 Environment Variables
+## Environment Variables
 
 Create a `.env` file in the project root:
 
@@ -158,7 +158,7 @@ ANTHROPIC_API_KEY=your-api-key-here
 ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 ```
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Here's how to get started:
 
@@ -176,17 +176,17 @@ We welcome contributions! Here's how to get started:
 - Use descriptive commit messages
 - Update documentation for API changes
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙋‍♂️ Support
+## Support
 
-- 🐛 **Issues**: Report bugs or request features
-- 💬 **Discussions**: Ask questions or share ideas
-- 📧 **Contact**: [your-email@example.com]
+- **Issues**: Report bugs or request features
+- **Discussions**: Ask questions or share ideas
+- **Contact**: [your-email@example.com]
 
-## 🎯 Roadmap
+## Roadmap
 
 - [ ] Plugin system for custom tools
 - [ ] Multi-language support
@@ -198,4 +198,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Made with ❤️ using Claude, TypeScript, and Bun**
+**Made with love using Claude, TypeScript, and Bun**
