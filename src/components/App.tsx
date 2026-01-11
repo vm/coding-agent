@@ -111,41 +111,32 @@ export function App() {
 
   const { reads, edits, lists, runs } = groupedToolCalls();
 
-  // Moon ASCII art
-  const moon = [
-    '            .  ·  ˚',
-    '       ·  ✦    ˚',
-    '    ˚        _..._     ✦',
-    '  ✦       .\'     `.      ˚',
-    '         /    .-"-.\\',
-    '   ˚    |   /     \\ |   ·',
-    '        ;  ;   __  ;|',
-    '   ·    |  |  (  ) ||  ✦',
-    '        ;  ;   ‾‾  ;|',
-    '    ✦   |   \\     / |',
-    '   ˚     \\    `-´-./    ·',
-    '          `..___.\'',
-    '       ˚        ✦    ·',
-    '    ·    ˚   .   ✦',
-  ];
-
   return (
     <Box flexDirection="column" height={terminalHeight}>
       {/* Start Screen */}
       {messages.length === 0 && (
         <Box flexDirection="column" alignItems="center" justifyContent="center" flexGrow={1}>
           {/* Moon art */}
-          <Box flexDirection="column" marginBottom={1}>
-            {moon.map((line, i) => (
-              <Text key={i} color={i < 2 || i > 11 ? 'gray' : 'white'} dimColor={i < 2 || i > 11}>
-                {line}
-              </Text>
-            ))}
+          <Box flexDirection="column">
+            <Text color="gray" dimColor>                ·  ✦      .</Text>
+            <Text color="gray" dimColor>        ✦                    ˚</Text>
+            <Text>      <Text color="gray" dimColor>˚</Text>       <Text color="yellow">█████</Text><Text color="white">██</Text></Text>
+            <Text>            <Text color="yellow">███████</Text><Text color="white">████</Text>   <Text color="gray" dimColor>·</Text></Text>
+            <Text>    <Text color="gray" dimColor>·</Text>      <Text color="yellow">█████████</Text><Text color="white">████</Text></Text>
+            <Text>          <Text color="yellow">██████████</Text><Text color="white">████</Text></Text>
+            <Text>   <Text color="gray" dimColor>✦</Text>      <Text color="yellow">██████████</Text><Text color="white">████</Text>  <Text color="gray" dimColor>˚</Text></Text>
+            <Text>          <Text color="yellow">██████████</Text><Text color="white">████</Text></Text>
+            <Text>           <Text color="yellow">█████████</Text><Text color="white">███</Text></Text>
+            <Text>     <Text color="gray" dimColor>.</Text>      <Text color="yellow">███████</Text><Text color="white">██</Text>   <Text color="gray" dimColor>✦</Text></Text>
+            <Text>             <Text color="yellow">█████</Text><Text color="white">█</Text></Text>
+            <Text color="gray" dimColor>        .            ·</Text>
+            <Text color="gray" dimColor>              ˚    ✦</Text>
           </Box>
           
           {/* Title */}
-          <Box marginTop={1}>
-            <Text color="white" bold>Nila Code</Text>
+          <Box marginTop={2}>
+            <Text color="yellow" bold>𝐍𝐈𝐋𝐀</Text>
+            <Text color="white" bold> 𝐂𝐎𝐃𝐄</Text>
           </Box>
           
           {/* Subtitle */}
