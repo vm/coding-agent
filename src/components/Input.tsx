@@ -26,15 +26,18 @@ export function Input({ onSubmit, disabled = false }: Props) {
   });
 
   return (
-    <Box>
-      <Text color={disabled ? 'gray' : 'cyan'} bold>
-        {disabled ? '> ' : '> '}
+    <Box flexDirection="row" alignItems="center">
+      <Text color={disabled ? 'gray' : 'white'} dimColor={disabled}>
+        {disabled ? '⏳' : '>'}
       </Text>
-      <Text>{value}</Text>
-      {!disabled && <Text color="gray">_</Text>}
-      {!disabled && value.length === 0 && (
-        <Text color="gray" dimColor>Type your message here...</Text>
-      )}
+      <Box marginLeft={1} flexGrow={1}>
+        {value.length > 0 ? (
+          <Text>{value}</Text>
+        ) : (
+          <Text color="gray" dimColor>Ask Claude...</Text>
+        )}
+        {!disabled && <Text color="white" dimColor>█</Text>}
+      </Box>
     </Box>
   );
 }

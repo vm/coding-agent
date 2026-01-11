@@ -75,13 +75,16 @@ export class Agent {
           });
         }
 
-        // Add assistant message with tool_use and our response with tool_results
+        // Add assistant message with tool_use blocks
         this.conversation.push({
           role: 'assistant',
-          content: [
-            ...toolUseBlocks,
-            ...toolResults,
-          ],
+          content: toolUseBlocks,
+        });
+
+        // Add user message with tool_results (required by Anthropic API)
+        this.conversation.push({
+          role: 'user',
+          content: toolResults,
         });
 
         // Continue loop to get next response
