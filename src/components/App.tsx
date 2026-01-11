@@ -54,7 +54,19 @@ export function App() {
 
   return (
     <Box flexDirection="column">
-      <Text color="gray">Chat with Claude (Ctrl+C to quit)</Text>
+      <Box marginBottom={1}>
+        <Text color="cyan" bold>Coding Agent - Claude Assistant</Text>
+        <Text color="gray">Type your message and press Enter to send. Press Ctrl+C to quit.</Text>
+        {messages.length === 0 && (
+          <Box flexDirection="column" marginTop={1}>
+            <Text color="gray">Examples:</Text>
+            <Text color="gray">  • "Create a file called hello.txt with 'Hello World'"</Text>
+            <Text color="gray">  • "List all files in the current directory"</Text>
+            <Text color="gray">  • "Read the package.json file"</Text>
+            <Text color="gray">  • "Run the command: ls -la"</Text>
+          </Box>
+        )}
+      </Box>
       <Box flexDirection="column" marginTop={1}>
         {messages.map((msg, idx) => (
           <Message key={idx} role={msg.role} content={msg.content} />
@@ -75,7 +87,9 @@ export function App() {
         {error && (
           <Text color="red">Error: {error}</Text>
         )}
-        <Input onSubmit={handleSubmit} disabled={isLoading} />
+        <Box marginTop={1}>
+          <Input onSubmit={handleSubmit} disabled={isLoading} />
+        </Box>
       </Box>
     </Box>
   );
