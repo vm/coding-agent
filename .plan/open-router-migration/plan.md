@@ -1,4 +1,4 @@
-# Open Router Migration
+# Open Router Migration (Async/Experimental)
 
 ## Overview
 Make the agent work with non-Anthropic models via OpenRouter.
@@ -26,6 +26,8 @@ Make the agent work with non-Anthropic models via OpenRouter.
 5. Add provider selection config
 
 ## Message Format Differences
+
+**Note:** Verify these format differences via web search before implementation.
 
 ### Anthropic
 ```json

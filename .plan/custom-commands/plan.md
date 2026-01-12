@@ -8,12 +8,12 @@ User-defined slash commands loaded from a prompts directory.
 - Check what commands exist via directory listing
 - Slash triggers search (e.g., `/make-pr`)
 - When detected, load the command's markdown file
-- Implementation: just a file read (e.g., read `makepr.md`)
+- Implementation: just a file read (e.g., read `make-pr.md`)
 - Keeps cache intact since it's a context addition, not system message change
 
 ## Directory Structure
 ```
-.claude/
+.agent/
   commands/
     make-pr.md
     review.md
@@ -22,13 +22,13 @@ User-defined slash commands loaded from a prompts directory.
 
 Or global:
 ```
-~/.claude/
+~/.agent/
   commands/
     make-pr.md
 ```
 
 ## Implementation Steps
-1. Define command search paths (local .claude/commands, global ~/.claude/commands)
+1. Define command search paths (local .agent/commands, global ~/.agent/commands)
 2. On startup or `/` input, scan for available commands
 3. Implement command discovery/autocomplete
 4. When command invoked, read the .md file into context

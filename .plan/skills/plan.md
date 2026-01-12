@@ -13,7 +13,7 @@ Custom commands with a directory structure that can include scripts and multiple
 
 ## Directory Structure
 ```
-~/.claude/
+~/.agent/
   skills/
     qr-code/
       skill.md          # Instructions

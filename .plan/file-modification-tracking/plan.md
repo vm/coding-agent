@@ -4,7 +4,7 @@
 Track last modified time of files to prevent overwriting changes made by external systems between reads.
 
 ## Key Points from Discussion
-- Cloud code has a file watching system
+- Agent has a file watching system
 - If another process modifies a file and you try to edit_file, it checks internal tracker
 - Compares "last time Claude modified this file" vs current mtime
 - If modified externally, re-read file before editing
