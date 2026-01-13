@@ -107,6 +107,32 @@ function formatToolCallHeader(tc: ToolCallItem): string {
   return target ? `${name}: ${target} (${status})` : `${name} (${status})`;
 }
 
+function truncateToolResult(name: string, result: string): string {
+  const lines = result.split('\n');
+  const totalLines = lines.length;
+  
+  let maxLines: number;
+  switch (name) {
+    case ToolName.READ_FILE:
+      maxLines = 50;
+      break;
+    case ToolName.RUN_COMMAND:
+      maxLines = 100;
+      break;
+    case ToolName.LIST_FILES:
+    case ToolName.EDIT_FILE:
+    default:
+      return result;
+  }
+  
+  if (totalLines <= maxLines) {
+    return result;
+  }
+  
+  const truncated = lines.slice(0, maxLines).join('\n');
+  return `${truncated}\n\n... (truncated, showing ${maxLines} of ${totalLines} lines)`;
+}
+
 function buildTranscriptLines(params: {
   messages: MessageItem[];
   toolCalls: ToolCallItem[];
@@ -140,7 +166,8 @@ function buildTranscriptLines(params: {
     const header = formatToolCallHeader(tc);
     lines.push({ text: header, color: toolStatusColor(tc.status) });
     if (tc.result) {
-      const wrapped = wrapText(tc.result, width);
+      const truncated = truncateToolResult(tc.name, tc.result);
+      const wrapped = wrapText(truncated, width);
       for (const w of wrapped) lines.push({ text: w, color: 'gray' });
     }
     lines.push({ text: '' });
