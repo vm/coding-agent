@@ -28,27 +28,42 @@ Always prefer editing existing files over creating new ones when appropriate. Be
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-function createOpenAIClient(): OpenAI {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENROUTER_API_KEY environment variable is required');
+function createOpenAIClient(): { client: OpenAI; model: string } {
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  const openrouterApiKey = process.env.OPENROUTER_API_KEY;
+
+  if (openaiApiKey) {
+    const model = process.env.OPENAI_MODEL;
+    if (!model) {
+      throw new Error('OPENAI_MODEL environment variable is required when using OPENAI_API_KEY');
+    }
+
+    const client = new OpenAI({
+      apiKey: openaiApiKey,
+    });
+
+    return { client, model };
   }
 
-  const model = process.env.OPENROUTER_MODEL;
-  if (!model) {
-    throw new Error('OPENROUTER_MODEL environment variable is required');
+  if (openrouterApiKey) {
+    const model = process.env.OPENROUTER_MODEL;
+    if (!model) {
+      throw new Error('OPENROUTER_MODEL environment variable is required when using OPENROUTER_API_KEY');
+    }
+
+    const client = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: openrouterApiKey,
+      defaultHeaders: {
+        'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://github.com',
+        'X-Title': process.env.OPENROUTER_APP_NAME || 'Coding Agent',
+      },
+    });
+
+    return { client, model };
   }
 
-  const client = new OpenAI({
-    baseURL: 'https://openrouter.ai/api/v1',
-    apiKey,
-    defaultHeaders: {
-      'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://github.com',
-      'X-Title': process.env.OPENROUTER_APP_NAME || 'Coding Agent',
-    },
-  });
-
-  return client;
+  throw new Error('Either OPENAI_API_KEY or OPENROUTER_API_KEY environment variable is required');
 }
 
 export class Agent {
@@ -58,10 +73,16 @@ export class Agent {
   private options: Required<AgentOptions>;
 
   constructor(client?: OpenAI, options?: AgentOptions & { model?: string }) {
-    this.client = client ?? createOpenAIClient();
-    this.model = options?.model || process.env.OPENROUTER_MODEL || '';
-    if (!this.model) {
-      throw new Error('OPENROUTER_MODEL environment variable is required, or pass model in options');
+    if (client) {
+      this.client = client;
+      this.model = options?.model || process.env.OPENAI_MODEL || process.env.OPENROUTER_MODEL || '';
+      if (!this.model) {
+        throw new Error('Model must be provided in options or via OPENAI_MODEL/OPENROUTER_MODEL environment variable');
+      }
+    } else {
+      const { client: createdClient, model: createdModel } = createOpenAIClient();
+      this.client = createdClient;
+      this.model = options?.model || createdModel;
     }
     this.options = {
       maxRetries: options?.maxRetries ?? 3,

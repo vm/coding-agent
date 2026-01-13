@@ -2,15 +2,15 @@
 
 # Coding Agent
 
-**A smart AI assistant that can read, write, and execute code in your terminal**
+**A terminal UI coding assistant with a small, explicit toolset (read/edit/list files + run commands)**
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-*Talk to your codebase in plain English. Build, debug, and manage projects through natural conversation.*
+Built with **React + Ink** for the UI and the **OpenAI SDK** for model calls (supports both direct OpenAI and OpenRouter).
 
-[Quick Start](#quick-start) • [Features](#what-can-it-do) • [Examples](#example-session) • [Development](#development) • [API Reference](#api-reference)
+[Quick Start](#quick-start) • [What it can do](#what-can-it-do) • [Tool reference](#tool-reference) • [Development](#development)
 
 ---
 
@@ -18,18 +18,20 @@
 
 ## What can it do?
 
-| Feature | Description |
-|---------|-------------|
-| **File Operations** | Read, edit, and create files with natural language commands |
-| **Command Execution** | Run shell commands and scripts safely |
-| **Directory Navigation** | Explore and understand your project structure |
-| **Complex Tasks** | Handle multi-step workflows automatically |
+The agent chats in the terminal and can invoke a small set of tools to operate on your machine:
+
+| Capability | Notes |
+|---|---|
+| **Read files** | Reads exact file paths |
+| **Edit files** | Replaces a specific string once, or creates a file |
+| **List directory contents** | Non-recursive, hides dotfiles |
+| **Run commands** | Executes a program with args (no shell features like pipes/redirects) |
 
 **Just ask naturally:**
-- *"Show me the package.json"*
-- *"Add TypeScript to this project"*
-- *"Install dependencies and start the dev server"*
-- *"Create a login form with validation and tests"*
+- *"Show me src/tools/index.ts"*
+- *"Update README.md to include a tool reference section"*
+- *"List files in src/tools"*
+- *"Run bun test"*
 
 ---
 
@@ -38,32 +40,38 @@
 ### Prerequisites
 
 - **[Bun](https://bun.sh)** installed on your system
-- **Anthropic API key** from [console.anthropic.com](https://console.anthropic.com/)
+- Either:
+  - **OpenAI API key** from [platform.openai.com](https://platform.openai.com/) as `OPENAI_API_KEY`, or
+  - **OpenRouter API key** from [openrouter.ai](https://openrouter.ai/) as `OPENROUTER_API_KEY`
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/coding-agent.git
-cd coding-agent
-
-# Install dependencies
 bun install
-
-# Set up your API key
-echo "ANTHROPIC_API_KEY=your-key-here" > .env
-
-# Start the agent
-bun start
 ```
 
-**That's it!** Navigate to any project folder and run `bun start` to begin.
+**Option 1: Direct OpenAI**
+```bash
+echo "OPENAI_API_KEY=your-key-here" > .env
+echo "OPENAI_MODEL=gpt-4o" >> .env
+bun run start
+```
+
+**Option 2: OpenRouter (supports OpenAI, Anthropic, and other models)**
+```bash
+echo "OPENROUTER_API_KEY=your-key-here" > .env
+echo "OPENROUTER_MODEL=openai/gpt-4o" >> .env
+# Or use Anthropic models: echo "OPENROUTER_MODEL=anthropic/claude-3.5-sonnet" >> .env
+bun run start
+```
+
+Bun automatically loads `.env` for processes it starts. If you prefer, you can also set the environment variables in your shell.
 
 ---
 
 ## How It Works
 
-The assistant follows a simple workflow:
+The agent maintains a chat transcript and calls tools when the model requests them.
 
 ```
 ┌─────────────────┐
@@ -72,20 +80,15 @@ The assistant follows a simple workflow:
          │
          ▼
 ┌─────────────────┐
-│  Understand     │
-│  Your Intent    │
+│  Model responds │
+│  with text and/ │
+│  or tool calls  │
 └────────┬────────┘
          │
          ▼
 ┌─────────────────┐
-│  Read Relevant  │
-│  Files          │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  Execute Actions│
-│  (Edit/Run/etc) │
+│  Tools execute  │
+│  locally        │
 └────────┬────────┘
          │
          ▼
@@ -94,135 +97,111 @@ The assistant follows a simple workflow:
 └─────────────────┘
 ```
 
-### Example Requests
+### Working directory and paths
 
-```
-"Create a React component for a todo list"
-"Fix the TypeScript errors in src/shared"
-"Run the tests and show me what failed"
-"Add a new API endpoint for user registration"
-```
-
----
-
-## Example Session
-
-```
-You: Create a simple Express server with a health check endpoint
-
-I'll create an Express server for you...
-
-Created: server.js
-Running: npm init -y
-Running: npm install express
-Created: package.json scripts
-
-Done! Your server is ready. Run 'npm start' to launch it.
-```
+The system prompt includes your **current working directory**. Tool paths are treated as the model provides them, so it’s best to run the agent from the directory you want to operate on (or provide absolute paths).
 
 ---
 
 ## Development
 
-### Running Tests
-
 ```bash
-# Run all tests
 bun test
 
-# Watch mode for development
-bun test --watch
+bun run test:watch
 
-# Generate coverage report
-bun test --coverage
+bun run test:coverage
+
+bun run typecheck
 ```
 
-### Project Structure
+### Scripts
+
+| Command | Description |
+|---|---|
+| `bun run start` | Start the Ink UI app |
+| `bun test` | Run tests |
+| `bun run test:watch` | Watch tests |
+| `bun run test:coverage` | Coverage |
+| `bun run typecheck` | TypeScript check |
+
+---
+
+## Tool reference
+
+The tools are defined in `src/tools/index.ts` and currently include:
+
+### `read_file`
+
+- **Input**: `{ path: string }`
+- **Behavior**: reads file contents, returns an error string on failure.
+
+### `edit_file`
+
+- **Input**: `{ path: string; old_str: string; new_str: string }`
+- **Behavior**:
+  - If `old_str` is empty, creates the file (creating parent directories as needed).
+  - Otherwise replaces the **single** matching occurrence of `old_str`.
+  - If `old_str` occurs multiple times, it errors to avoid ambiguous edits.
+
+### `list_files`
+
+- **Input**: `{ path: string }`
+- **Behavior**: lists immediate children, **non-recursive**, and skips entries starting with `.`.
+
+### `run_command`
+
+- **Input**: `{ command: string }`
+- **Behavior**: executes a program directly (splitting args with basic quote handling).
+- **Limitations**: it does **not** run through a shell, so these won’t work: pipes (`|`), redirects (`>`, `<`), `&&`, glob expansion, shell builtins.
+
+---
+
+## Project structure
 
 ```
-coding-agent/
-├── src/
-│   ├── agent/          # Core agent logic
-│   ├── components/     # React/Ink UI components
-│   └── tools/          # Available tools/commands
-├── tests/              # Test suite
-└── package.json
+src/
+  agent/        Agent + OpenAI/OpenRouter integration
+  components/   Ink UI
+  shared/       Transcript parsing/types
+  tools/        Local tool implementations
+tests/          Mirrors src/ with .test.ts files
+plans/          Design notes / roadmap
 ```
 
 ---
 
-## Tech Stack
+## Configuration
 
-| Technology | Purpose |
-|------------|---------|
-| **TypeScript** | Type-safe development |
-| **Bun** | Fast runtime & package manager |
-| **Claude AI** | Intelligent code understanding |
-| **React + Ink** | Beautiful terminal UI |
+### Environment variables
 
----
+**For Direct OpenAI:**
+| Variable | Required | Description |
+|---|---:|---|
+| `OPENAI_API_KEY` | Yes | API key from OpenAI |
+| `OPENAI_MODEL` | Yes | Model name (e.g., `gpt-4o`, `gpt-4-turbo`) |
 
-## Requirements
+**For OpenRouter:**
+| Variable | Required | Description |
+|---|---:|---|
+| `OPENROUTER_API_KEY` | Yes | API key from OpenRouter |
+| `OPENROUTER_MODEL` | Yes | Model identifier (e.g., `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`) |
+| `OPENROUTER_SITE_URL` | No | Site URL for OpenRouter headers (default: `https://github.com`) |
+| `OPENROUTER_APP_NAME` | No | App name for OpenRouter headers (default: `Coding Agent`) |
 
-- Bun installed
-- Anthropic API key
-- That's it!
-
----
-
-## API Reference
-
-### Available Commands
-
-The coding agent supports the following operations:
-
-- **File Operations**: `read_file`, `edit_file`, `list_files`
-- **Command Execution**: `run_command`
-- **Navigation**: Explore directories and understand project structure
-
-### Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Your Anthropic Claude API key | Yes |
-
-### Configuration
-
-Create a `.env` file in your project root:
-
-```env
-ANTHROPIC_API_KEY=your-api-key-here
-```
+The agent will automatically detect which provider to use based on which API key is set. If both are set, `OPENAI_API_KEY` takes precedence.
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
-
 **"API key not found"**
-- Ensure your `.env` file contains `ANTHROPIC_API_KEY=your-key`
-- Check that the `.env` file is in the correct directory
+- Ensure your `.env` file contains either `OPENAI_API_KEY` and `OPENAI_MODEL`, or `OPENROUTER_API_KEY` and `OPENROUTER_MODEL`
+- Ensure you are starting the agent from the directory containing `.env`, or export the variables in your shell
 
 **"Command not found: bun"**
 - Install Bun from [bun.sh](https://bun.sh)
 - Restart your terminal after installation
-
-**"Permission denied"**
-- The agent respects file permissions and won't modify protected files
-- Ensure you have write permissions in the current directory
-
----
-
-## Contributing
-
-Contributions are welcome! Found a bug or have an idea?
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ---
 
@@ -234,7 +213,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Made with love using TypeScript, Bun, and Claude AI**
+**Built with TypeScript, Bun, Ink, and the OpenAI SDK**
 
 [Back to Top](#coding-agent)
 
