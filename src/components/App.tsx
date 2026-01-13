@@ -4,9 +4,8 @@ import { Agent } from '../agent/agent';
 import { Input } from './Input';
 import { MessageRole, ToolCallStatus } from '../agent/types';
 import { splitForToolCalls } from './transcript';
-import { cwd } from 'node:process';
-import { expandInput } from '../commands/index';
 import { TranscriptView } from './TranscriptView';
+import { cwd } from 'node:process';
 
 type MessageItem = {
   role: MessageRole;
@@ -67,28 +66,15 @@ export function App() {
   }, [stdout]);
 
   const handleSubmit = async (text: string) => {
-    const workingDir = cwd();
-    const expanded = expandInput(text, workingDir);
-
-    setMessages(prev => [...prev, { role: MessageRole.USER, content: expanded.userText }]);
+    setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
     setScrollOffset(0);
     setIsLoading(true);
     setThinkingStartTime(Date.now());
     setError(null);
     setToolCalls([]);
 
-    if (expanded.kind === 'local') {
-      setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: expanded.outputText }]);
-      if (expanded.error) {
-        setError(expanded.outputText);
-      }
-      setIsLoading(false);
-      setThinkingStartTime(null);
-      return;
-    }
-
     try {
-      const response = await agent.chat(expanded.prompt);
+      const response = await agent.chat(text);
       setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: response.text }]);
       if (response.error) setError(response.error);
     } catch (err) {
@@ -100,7 +86,6 @@ export function App() {
     }
   };
 
-  const workingDir = cwd();
 
   const banner = [
     '███╗   ██╗██╗██╗      █████╗      ██████╗ ██████╗ ██████╗ ███████╗',
@@ -159,7 +144,7 @@ export function App() {
           </Box>
           
           <Box marginTop={2}>
-            <Text color="gray" dimColor>{workingDir}</Text>
+            <Text color="gray" dimColor>{cwd()}</Text>
           </Box>
         </Box>
       )}

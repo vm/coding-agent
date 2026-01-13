@@ -22,19 +22,19 @@ This plan intentionally avoids implementation-sized code blocks. The source of t
 
 - **UI input handling**: `src/components/App.tsx` (see `handleSubmit` function)
 - **Agent boundary**: `src/agent/agent.ts` (where the final prompt is sent via `agent.chat()`)
-- **New module**: `src/commands/` ✅ (added)
-- **New tests**: `tests/commands/` ✅ (added)
+- **New module**: `src/commands/`
+- **New tests**: `tests/commands/`
 
 ## Concrete file/API targets
 
 Create a single module that exports the exact helpers:
 
-- **Add**: `src/commands/index.ts` ✅
+- **Add**: `src/commands/index.ts`
   - exports:
-    - `parseSlashCommand(input: string) -> { name: string; rest: string } | null` ✅
-    - `findCommand(name: string, workingDir?: string) -> CommandResult | null` ✅
-    - `listCommands(workingDir?: string) -> string[]` ✅
-    - `expandInput(input: string, workingDir?: string) -> ExpandResult` ✅
+    - `parseSlashCommand(input: string) -> { name: string; rest: string } | null`
+    - `findCommand(name: string, workingDir?: string) -> CommandResult | null`
+    - `listCommands(workingDir?: string) -> string[]`
+    - `expandInput(input: string, workingDir?: string) -> ExpandResult`
 
 Minimal return types to standardize behavior:
 
@@ -64,15 +64,15 @@ Search in this order (first match wins):
 
 ### Integration point
 
-- **Modify**: `src/components/App.tsx` `handleSubmit(text: string)` ✅
-  - call `expandInput(text, cwd())` ✅
+- **Modify**: `src/components/App.tsx` `handleSubmit(text: string)`
+  - call `expandInput(text, cwd())`
   - if `kind === 'local'`:
-    - append user message with `userText` ✅
-    - append assistant message with `outputText` ✅
-    - return without calling `agent.chat` ✅
+    - append user message with `userText`
+    - append assistant message with `outputText`
+    - return without calling `agent.chat`
   - if `kind === 'agent'`:
-    - append user message with `userText` ✅
-    - call `agent.chat(prompt)` ✅
+    - append user message with `userText`
+    - call `agent.chat(prompt)`
 
 ---
 
@@ -137,46 +137,46 @@ User input and expected behavior:
 
 ### Parsing
 
-- [x] `/name` parses into `{ name, rest: '' }`
-- [x] `/name with extra text` parses into `{ name, rest: 'with extra text' }`
-- [x] non-slash input returns null (not a command)
-- [x] `/help` is recognized like any other slash command name
-- [x] `/Name` normalizes to lowercase `name` for lookup
+- [ ] `/name` parses into `{ name, rest: '' }`
+- [ ] `/name with extra text` parses into `{ name, rest: 'with extra text' }`
+- [ ] non-slash input returns null (not a command)
+- [ ] `/help` is recognized like any other slash command name
+- [ ] `/Name` normalizes to lowercase `name` for lookup
 
 ### Discovery
 
-- [x] `findCommand(name, dir)` loads a command from `.code/commands/<name>.md` if present
-- [x] `findCommand(name, dir)` loads a skill from `.code/skills/<name>/SKILL.md` if present
-- [x] missing returns null
-- [x] skill content replaces `{{skill_path}}` with the concrete absolute directory path
-- [x] skill discovery returns a list of skill files (excluding `SKILL.md`) with relative paths
+- [ ] `findCommand(name, dir)` loads a command from `.code/commands/<name>.md` if present
+- [ ] `findCommand(name, dir)` loads a skill from `.code/skills/<name>/SKILL.md` if present
+- [ ] missing returns null
+- [ ] skill content replaces `{{skill_path}}` with the concrete absolute directory path
+- [ ] skill discovery returns a list of skill files (excluding `SKILL.md`) with relative paths
 
 ### Listing
 
-- [x] `listCommands(dir)` returns all available command names and skill names, de-duped
+- [ ] `listCommands(dir)` returns all available command names and skill names, de-duped
 - [ ] project commands/skills appear before personal ones *(Phase 2)*
 - [ ] duplicate names (project overriding personal) only appear once *(Phase 2)*
 
 ### Expansion
 
-- [x] `/help` returns a local response listing commands/skills and does not call the agent
-- [x] unknown `/name` returns a local error message pointing to `/help`
-- [x] known command expands to an agent prompt and appends `rest` at the end
-- [x] known skill expands to an agent prompt, includes a file listing, and appends `rest`
+- [ ] `/help` returns a local response listing commands/skills and does not call the agent
+- [ ] unknown `/name` returns a local error message pointing to `/help`
+- [ ] known command expands to an agent prompt and appends `rest` at the end
+- [ ] known skill expands to an agent prompt, includes a file listing, and appends `rest`
 
 ### Suggested test cases (more specific)
 
-- [x] **/help output contains discovered items**:
+- [ ] **/help output contains discovered items**:
   - create `.code/commands/review.md` and `.code/skills/qr-code/SKILL.md` in a temp workspace
   - call expand on `/help`
   - assert output includes `/review` and `/qr-code`
-- [x] **unknown command is local error**:
+- [ ] **unknown command is local error**:
   - call expand on `/nope`
   - assert kind is local + error is true + output mentions `/help`
-- [x] **command expansion includes rest**:
+- [ ] **command expansion includes rest**:
   - expand `/review the auth module`
   - assert prompt contains both the file content and `the auth module`
-- [x] **skill file listing is names only**:
+- [ ] **skill file listing is names only**:
   - create skill with `make_qr.py`
   - expand `/qr-code`
   - assert prompt contains `make_qr.py`
@@ -185,14 +185,14 @@ User input and expected behavior:
   - create both project `.code/commands/foo.md` and personal `~/.code/commands/foo.md`
   - expand `/foo`
   - assert the project version content is used
-- [x] **case insensitive lookup**:
+- [ ] **case insensitive lookup**:
   - create `.code/commands/Review.md`
   - expand `/review`
   - assert it finds the command
 
 ### Test file mapping (exactly what to add)
 
-- [x] **Add**: `tests/commands/index.test.ts`
+- [ ] **Add**: `tests/commands/index.test.ts`
   - use `mkdtempSync` + `rmSync` (same pattern as existing tool tests)
   - create `.code/commands/` and `.code/skills/` under the temp dir
   - run assertions against `parseSlashCommand`, `findCommand`, `listCommands`, `expandInput`
@@ -201,22 +201,22 @@ User input and expected behavior:
 
 ### Implementation checklist (Phase 1 - project-level only)
 
-- [x] **1) Add `src/commands/index.ts` with the 4 exports**
+- [ ] **1) Add `src/commands/index.ts` with the 4 exports**
   - `parseSlashCommand`, `findCommand`, `listCommands`, `expandInput`
   - Keep return types exactly as specified (so tests are stable)
   - Add `tests/commands/index.test.ts` with parsing tests first
 
-- [x] **2) Implement project-local discovery**
+- [ ] **2) Implement project-local discovery**
   - `.code/commands/<name>.md`
   - `.code/skills/<name>/SKILL.md`
   - Verify: tests that create a temp `.code/commands` and `.code/skills` workspace pass
 
-- [x] **3) Implement expansion and `/help`**
+- [ ] **3) Implement expansion and `/help`**
   - `/help` returns `{ kind: 'local' ... }` and lists command names as `/name`
   - Unknown `/x` returns local error and suggests `/help`
   - Known commands/skills return `{ kind: 'agent', prompt: ... }`
 
-- [x] **4) Wire into the UI (`src/components/App.tsx`)**
+- [ ] **4) Wire into the UI (`src/components/App.tsx`)**
   - In `handleSubmit`, call `expandInput(text, cwd())`
   - Always append user message with `userText` (the original input)
   - If local:
@@ -269,7 +269,7 @@ Keep these consistent so tests can assert on them:
 
 ### Built-in `/help`
 
-- [x] prints available commands/skills from project
+- [ ] prints available commands/skills from project
 - [ ] prints available commands/skills including personal *(Phase 2)*
 - [ ] shows command source (project vs user) for clarity *(Phase 2)*
 - [ ] optionally supports `/help <query>` later *(Phase 3+)*
@@ -291,10 +291,10 @@ Keep these consistent so tests can assert on them:
 ## Definition of done
 
 ### Phase 1 (project-level)
-- [x] `/help` works end-to-end in the UI
-- [x] Unknown commands error locally (no agent call)
-- [x] Known commands/skills expand into an agent prompt consistently
-- [x] Skills never execute code; they only surface text and file names
+- [ ] `/help` works end-to-end in the UI
+- [ ] Unknown commands error locally (no agent call)
+- [ ] Known commands/skills expand into an agent prompt consistently
+- [ ] Skills never execute code; they only surface text and file names
 
 ### Phase 2 (personal)
 - [ ] Project commands/skills take precedence over personal ones
