@@ -3,13 +3,6 @@ import { render } from 'ink-testing-library';
 import { TranscriptView } from '../../src/components/TranscriptView';
 import { MessageRole, ToolCallStatus, ToolName } from '../../src/agent/types';
 
-function createToolCallWithId(id: string, toolCall: { name: string; input?: Record<string, unknown>; status: ToolCallStatus; result?: string }) {
-  return { id, ...toolCall };
-}
-
-function expandAllToolCalls(toolCalls: Array<{ id?: string }>): Set<string> {
-  return new Set(toolCalls.map(tc => tc.id || '').filter(id => id !== ''));
-}
 
 describe('TranscriptView', () => {
   it('renders a descriptive tool call label with the command', () => {
@@ -17,13 +10,11 @@ describe('TranscriptView', () => {
       <TranscriptView
         messages={[]}
         toolCalls={[{
-          id: 'test-1',
           name: ToolName.RUN_COMMAND,
           input: { command: 'bun test' },
           status: ToolCallStatus.DONE,
         }]}
         isLoading={false}
-        expandedToolCalls={new Set(['test-1'])}
         error={null}
         width={80}
         height={24}
@@ -134,18 +125,16 @@ describe('TranscriptView', () => {
   describe('result truncation', () => {
     it('truncates read_file results to 50 lines', () => {
       const manyLines = Array.from({ length: 100 }, (_, i) => `line ${i + 1}`).join('\n');
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.READ_FILE,
-        input: { path: 'test.ts' },
-        status: ToolCallStatus.DONE,
-        result: manyLines,
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.READ_FILE,
+            input: { path: 'test.ts' },
+            status: ToolCallStatus.DONE,
+            result: manyLines,
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -159,18 +148,16 @@ describe('TranscriptView', () => {
 
     it('does not truncate read_file results with 50 or fewer lines', () => {
       const fewLines = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join('\n');
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.READ_FILE,
-        input: { path: 'test.ts' },
-        status: ToolCallStatus.DONE,
-        result: fewLines,
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.READ_FILE,
+            input: { path: 'test.ts' },
+            status: ToolCallStatus.DONE,
+            result: fewLines,
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -183,18 +170,16 @@ describe('TranscriptView', () => {
 
     it('truncates run_command results to 100 lines', () => {
       const manyLines = Array.from({ length: 150 }, (_, i) => `output ${i + 1}`).join('\n');
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.RUN_COMMAND,
-        input: { command: 'test' },
-        status: ToolCallStatus.DONE,
-        result: manyLines,
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.RUN_COMMAND,
+            input: { command: 'test' },
+            status: ToolCallStatus.DONE,
+            result: manyLines,
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -208,18 +193,16 @@ describe('TranscriptView', () => {
 
     it('does not truncate list_files results', () => {
       const manyLines = Array.from({ length: 200 }, (_, i) => `file${i}.ts`).join('\n');
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.LIST_FILES,
-        input: { path: '.' },
-        status: ToolCallStatus.DONE,
-        result: manyLines,
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.LIST_FILES,
+            input: { path: '.' },
+            status: ToolCallStatus.DONE,
+            result: manyLines,
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -231,18 +214,16 @@ describe('TranscriptView', () => {
     });
 
     it('shows diff for edit_file results', () => {
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.EDIT_FILE,
-        input: { path: 'test.ts', old_str: 'old', new_str: 'new' },
-        status: ToolCallStatus.DONE,
-        result: 'Updated file "test.ts"',
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.EDIT_FILE,
+            input: { path: 'test.ts', old_str: 'old', new_str: 'new' },
+            status: ToolCallStatus.DONE,
+            result: 'Updated file "test.ts"',
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -257,18 +238,16 @@ describe('TranscriptView', () => {
     it('truncates large edit_file diffs', () => {
       const oldLines = Array.from({ length: 60 }, (_, i) => `old line ${i + 1}`).join('\n');
       const newLines = Array.from({ length: 60 }, (_, i) => `new line ${i + 1}`).join('\n');
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.EDIT_FILE,
-        input: { path: 'test.ts', old_str: oldLines, new_str: newLines },
-        status: ToolCallStatus.DONE,
-        result: 'Updated file "test.ts"',
-      })];
       const { frames } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.EDIT_FILE,
+            input: { path: 'test.ts', old_str: oldLines, new_str: newLines },
+            status: ToolCallStatus.DONE,
+            result: 'Updated file "test.ts"',
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={200}
@@ -284,18 +263,16 @@ describe('TranscriptView', () => {
     });
 
     it('shows new content with + prefix for file creation', () => {
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.EDIT_FILE,
-        input: { path: 'new.ts', old_str: '', new_str: 'const x = 1;' },
-        status: ToolCallStatus.DONE,
-        result: 'Created file "new.ts"',
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.EDIT_FILE,
+            input: { path: 'new.ts', old_str: '', new_str: 'const x = 1;' },
+            status: ToolCallStatus.DONE,
+            result: 'Created file "new.ts"',
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -368,18 +345,16 @@ describe('TranscriptView', () => {
 
   describe('styled code blocks', () => {
     it('renders read_file results in bordered block', () => {
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.READ_FILE,
-        input: { path: 'config.ts' },
-        status: ToolCallStatus.DONE,
-        result: 'export const config = {\n  port: 3000,\n};',
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.READ_FILE,
+            input: { path: 'config.ts' },
+            status: ToolCallStatus.DONE,
+            result: 'export const config = {\n  port: 3000,\n};',
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -394,18 +369,16 @@ describe('TranscriptView', () => {
     });
 
     it('renders run_command results in bordered block', () => {
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.RUN_COMMAND,
-        input: { command: 'bun test' },
-        status: ToolCallStatus.DONE,
-        result: 'Running tests...\nAll tests passed',
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.RUN_COMMAND,
+            input: { command: 'bun test' },
+            status: ToolCallStatus.DONE,
+            result: 'Running tests...\nAll tests passed',
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -421,18 +394,16 @@ describe('TranscriptView', () => {
     });
 
     it('handles empty content in code block', () => {
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.READ_FILE,
-        input: { path: 'empty.ts' },
-        status: ToolCallStatus.DONE,
-        result: '',
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.READ_FILE,
+            input: { path: 'empty.ts' },
+            status: ToolCallStatus.DONE,
+            result: '',
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -446,18 +417,16 @@ describe('TranscriptView', () => {
 
     it('truncates long command names in header', () => {
       const longCommand = 'bun test --verbose --coverage --watch --reporter=verbose --timeout=5000';
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.RUN_COMMAND,
-        input: { command: longCommand },
-        status: ToolCallStatus.DONE,
-        result: 'output',
-      })];
       const { lastFrame } = render(
         <TranscriptView
           messages={[]}
-          toolCalls={toolCalls}
+          toolCalls={[{
+            name: ToolName.RUN_COMMAND,
+            input: { command: longCommand },
+            status: ToolCallStatus.DONE,
+            result: 'output',
+          }]}
           isLoading={false}
-          expandedToolCalls={expandAllToolCalls(toolCalls)}
           error={null}
           width={80}
           height={24}
@@ -467,89 +436,6 @@ describe('TranscriptView', () => {
       const output = lastFrame();
       expect(output).toContain('── run command:');
       expect(output).toContain('…');
-    });
-  });
-
-  describe('collapsible tool outputs', () => {
-    it('tool calls start collapsed by default', () => {
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.READ_FILE,
-        input: { path: 'test.ts' },
-        status: ToolCallStatus.DONE,
-        result: 'const x = 1;',
-      })];
-      const { lastFrame } = render(
-        <TranscriptView
-          messages={[]}
-          toolCalls={toolCalls}
-          isLoading={false}
-          error={null}
-          width={80}
-          height={24}
-        />
-      );
-
-      const output = lastFrame();
-      expect(output).toContain('▶ read file: test.ts');
-      expect(output).not.toContain('const x = 1;');
-    });
-
-    it('shows expanded content when tool call is expanded', () => {
-      const toolCalls = [createToolCallWithId('test-1', {
-        name: ToolName.READ_FILE,
-        input: { path: 'test.ts' },
-        status: ToolCallStatus.DONE,
-        result: 'const x = 1;',
-      })];
-      const { lastFrame } = render(
-        <TranscriptView
-          messages={[]}
-          toolCalls={toolCalls}
-          isLoading={false}
-          expandedToolCalls={new Set(['test-1'])}
-          error={null}
-          width={80}
-          height={24}
-        />
-      );
-
-      const output = lastFrame();
-      expect(output).toContain('▼ read file: test.ts');
-      expect(output).toContain('const x = 1;');
-    });
-
-    it('multiple tool calls can be independently expanded', () => {
-      const toolCalls = [
-        createToolCallWithId('test-1', {
-          name: ToolName.READ_FILE,
-          input: { path: 'file1.ts' },
-          status: ToolCallStatus.DONE,
-          result: 'content 1',
-        }),
-        createToolCallWithId('test-2', {
-          name: ToolName.READ_FILE,
-          input: { path: 'file2.ts' },
-          status: ToolCallStatus.DONE,
-          result: 'content 2',
-        }),
-      ];
-      const { lastFrame } = render(
-        <TranscriptView
-          messages={[]}
-          toolCalls={toolCalls}
-          isLoading={false}
-          expandedToolCalls={new Set(['test-1'])}
-          error={null}
-          width={80}
-          height={24}
-        />
-      );
-
-      const output = lastFrame();
-      expect(output).toContain('▼ read file: file1.ts');
-      expect(output).toContain('content 1');
-      expect(output).toContain('▶ read file: file2.ts');
-      expect(output).not.toContain('content 2');
     });
   });
 });

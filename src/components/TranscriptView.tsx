@@ -256,15 +256,13 @@ function parseToolResultLines(text: string, toolName: string, width: number, inp
   return lines;
 }
 
-function formatToolCallHeaderColored(tc: ToolCallItem, isExpanded: boolean, isFocused: boolean): Line {
+function formatToolCallHeaderColored(tc: ToolCallItem): Line {
   const name = formatToolCallName(tc.name);
   const target = formatToolCallTarget(tc.name, tc.input);
   const status = toolStatusLabel(tc.status);
   const statusColor = toolStatusColor(tc.status);
-  const indicator = isExpanded ? '▼' : '▶';
-  const focusIndicator = isFocused ? '●' : ' ';
 
-  let headerText = `${focusIndicator}${indicator} ${name}`;
+  let headerText = name;
   if (target) {
     headerText += `: ${target}`;
   }
@@ -280,10 +278,8 @@ function buildTranscriptLines(params: {
   thinkingElapsedSeconds: number | null;
   error: string | null;
   width: number;
-  expandedToolCalls: Set<string>;
-  focusedToolCallIndex: number | null;
 }): Line[] {
-  const { messages, toolCalls, isLoading, thinkingElapsedSeconds, error, width, expandedToolCalls, focusedToolCallIndex } = params;
+  const { messages, toolCalls, isLoading, thinkingElapsedSeconds, error, width } = params;
   const lines: Line[] = [];
 
   for (const msg of messages) {
@@ -308,14 +304,10 @@ function buildTranscriptLines(params: {
     lines.push({ text: '' });
   }
 
-  for (let i = 0; i < toolCalls.length; i++) {
-    const tc = toolCalls[i];
-    const toolCallId = tc.id || '';
-    const isExpanded = expandedToolCalls.has(toolCallId);
-    const isFocused = focusedToolCallIndex === i;
-    const header = formatToolCallHeaderColored(tc, isExpanded, isFocused);
+  for (const tc of toolCalls) {
+    const header = formatToolCallHeaderColored(tc);
     lines.push(header);
-    if (isExpanded && tc.result !== undefined && tc.result !== null) {
+    if (tc.result !== undefined && tc.result !== null) {
       const truncated = truncateToolResult(tc.name, tc.result, tc.input);
       const resultLines = parseToolResultLines(truncated, tc.name, width, tc.input);
       lines.push(...resultLines);
@@ -338,8 +330,6 @@ export function TranscriptView(props: {
   toolCalls: ToolCallItem[];
   isLoading: boolean;
   thinkingStartTime?: number | null;
-  expandedToolCalls?: Set<string>;
-  focusedToolCallIndex?: number | null;
   error: string | null;
   width: number;
   height: number;
@@ -348,8 +338,6 @@ export function TranscriptView(props: {
   const width = Math.max(1, props.width);
   const height = Math.max(1, props.height);
   const scrollOffset = Math.max(0, props.scrollOffset ?? 0);
-  const expandedToolCalls = props.expandedToolCalls || new Set<string>();
-  const focusedToolCallIndex = props.focusedToolCallIndex ?? null;
 
   const [thinkingElapsedSeconds, setThinkingElapsedSeconds] = useState<number | null>(null);
 
@@ -379,8 +367,6 @@ export function TranscriptView(props: {
     thinkingElapsedSeconds,
     error: props.error,
     width,
-    expandedToolCalls,
-    focusedToolCallIndex,
   });
 
   if (props.afterAssistant) {
@@ -391,8 +377,6 @@ export function TranscriptView(props: {
       thinkingElapsedSeconds: null,
       error: null,
       width,
-      expandedToolCalls: new Set(),
-      focusedToolCallIndex: null,
     });
     allLines.push(...assistantLines);
   }

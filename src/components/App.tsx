@@ -49,8 +49,6 @@ export function App() {
   const [terminalHeight, setTerminalHeight] = useState(stdout.rows || 24);
   const [terminalWidth, setTerminalWidth] = useState(stdout.columns || 80);
   const [scrollOffset, setScrollOffset] = useState(0);
-  const [expandedToolCalls, setExpandedToolCalls] = useState<Set<string>>(new Set());
-  const [focusedToolCallIndex, setFocusedToolCallIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const handleExit = () => exit();
@@ -130,30 +128,12 @@ export function App() {
     const page = Math.max(1, transcriptHeight - 1);
 
     if (key.upArrow) {
-      if (key.ctrl || key.meta) {
-        if (focusedToolCallIndex !== null && focusedToolCallIndex > 0) {
-          setFocusedToolCallIndex(focusedToolCallIndex - 1);
-        } else if (toolCalls.length > 0) {
-          setFocusedToolCallIndex(toolCalls.length - 1);
-        }
-      } else {
-        setScrollOffset(prev => prev + 1);
-      }
+      setScrollOffset(prev => prev + 1);
       return;
     }
 
     if (key.downArrow) {
-      if (key.ctrl || key.meta) {
-        if (focusedToolCallIndex !== null && focusedToolCallIndex < toolCalls.length - 1) {
-          setFocusedToolCallIndex(focusedToolCallIndex + 1);
-        } else if (focusedToolCallIndex === null && toolCalls.length > 0) {
-          setFocusedToolCallIndex(0);
-        } else {
-          setFocusedToolCallIndex(null);
-        }
-      } else {
-        setScrollOffset(prev => Math.max(0, prev - 1));
-      }
+      setScrollOffset(prev => Math.max(0, prev - 1));
       return;
     }
 
@@ -164,38 +144,6 @@ export function App() {
 
     if (key.pageDown) {
       setScrollOffset(prev => Math.max(0, prev - page));
-      return;
-    }
-
-    if (key.return && focusedToolCallIndex !== null && toolCalls[focusedToolCallIndex]) {
-      const toolCall = toolCalls[focusedToolCallIndex];
-      if (toolCall && toolCall.id) {
-        setExpandedToolCalls(prev => {
-          const next = new Set(prev);
-          if (next.has(toolCall.id)) {
-            next.delete(toolCall.id);
-          } else {
-            next.add(toolCall.id);
-          }
-          return next;
-        });
-      }
-      return;
-    }
-
-    if (key.return && toolCalls.length > 0 && focusedToolCallIndex === null) {
-      const lastToolCall = toolCalls[toolCalls.length - 1];
-      if (lastToolCall && lastToolCall.id) {
-        setExpandedToolCalls(prev => {
-          const next = new Set(prev);
-          if (next.has(lastToolCall.id)) {
-            next.delete(lastToolCall.id);
-          } else {
-            next.add(lastToolCall.id);
-          }
-          return next;
-        });
-      }
       return;
     }
   });
@@ -222,7 +170,6 @@ export function App() {
             messages={before}
             afterAssistant={afterAssistant}
             toolCalls={toolCalls.map(tc => ({
-              id: tc.id,
               name: tc.name,
               input: tc.input,
               status: tc.status,
@@ -230,8 +177,6 @@ export function App() {
             }))}
             isLoading={isLoading}
             thinkingStartTime={thinkingStartTime}
-            expandedToolCalls={expandedToolCalls}
-            focusedToolCallIndex={focusedToolCallIndex}
             error={error}
             width={contentWidth}
             height={transcriptHeight}
