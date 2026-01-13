@@ -162,25 +162,57 @@ function parseDiffLine(line: string, width: number): Line[] {
   return lines;
 }
 
-function parseToolResultLines(text: string, toolName: string, width: number): Line[] {
+function renderCodeBlock(title: string, content: string, width: number, contentColor: string, dimColor: boolean): Line[] {
+  const lines: Line[] = [];
+  const headerWidth = Math.min(60, width);
+  const titlePart = `── ${title} `;
+  const remainingWidth = Math.max(0, headerWidth - titlePart.length);
+  const headerLine = titlePart + '─'.repeat(remainingWidth);
+  lines.push({ text: headerLine, color: 'gray', dimColor: true });
+
+  const contentLines = splitLines(content);
+  const borderWidth = Math.min(width, headerWidth);
+  
+  if (contentLines.length === 0 || (contentLines.length === 1 && contentLines[0] === '')) {
+    lines.push({ text: '│', color: 'gray', dimColor: true });
+  } else {
+    for (const logicalLine of contentLines) {
+      const wrapped = wrapLine(logicalLine, borderWidth - 2);
+      for (const w of wrapped) {
+        const borderedLine = `│ ${w}`;
+        lines.push({ text: borderedLine, color: contentColor, dimColor });
+      }
+    }
+  }
+
+  const footerLine = '─'.repeat(borderWidth);
+  lines.push({ text: footerLine, color: 'gray', dimColor: true });
+
+  return lines;
+}
+
+function parseToolResultLines(text: string, toolName: string, width: number, input?: Record<string, unknown>): Line[] {
   const lines: Line[] = [];
   const logicalLines = splitLines(text);
 
-  for (const logicalLine of logicalLines) {
-    if (toolName === ToolName.EDIT_FILE) {
+  if (toolName === ToolName.EDIT_FILE) {
+    for (const logicalLine of logicalLines) {
       const diffLines = parseDiffLine(logicalLine, width);
       lines.push(...diffLines);
-    } else if (toolName === ToolName.READ_FILE) {
-      const wrapped = wrapLine(logicalLine, width);
-      for (const w of wrapped) {
-        lines.push({ text: w, color: 'cyan', dimColor: true });
-      }
-    } else if (toolName === ToolName.RUN_COMMAND) {
-      const wrapped = wrapLine(logicalLine, width);
-      for (const w of wrapped) {
-        lines.push({ text: w, color: 'gray' });
-      }
-    } else {
+    }
+  } else if (toolName === ToolName.READ_FILE) {
+    const path = input?.path as string | undefined;
+    const filename = path ? getFileName(path) : 'file';
+    const title = `read file: ${filename}`;
+    return renderCodeBlock(title, text, width, 'cyan', true);
+  } else if (toolName === ToolName.RUN_COMMAND) {
+    const command = input?.command as string | undefined;
+    const commandText = command || 'command';
+    const truncatedCommand = commandText.length > 50 ? commandText.slice(0, 47) + '…' : commandText;
+    const title = `run command: ${truncatedCommand}`;
+    return renderCodeBlock(title, text, width, 'gray', false);
+  } else {
+    for (const logicalLine of logicalLines) {
       const wrapped = wrapLine(logicalLine, width);
       for (const w of wrapped) {
         lines.push({ text: w, color: 'gray', dimColor: true });
@@ -242,9 +274,9 @@ function buildTranscriptLines(params: {
   for (const tc of toolCalls) {
     const header = formatToolCallHeaderColored(tc);
     lines.push(header);
-    if (tc.result) {
+    if (tc.result !== undefined && tc.result !== null) {
       const truncated = truncateToolResult(tc.name, tc.result, tc.input);
-      const resultLines = parseToolResultLines(truncated, tc.name, width);
+      const resultLines = parseToolResultLines(truncated, tc.name, width, tc.input);
       lines.push(...resultLines);
     }
     lines.push({ text: '' });

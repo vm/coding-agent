@@ -341,4 +341,99 @@ describe('TranscriptView', () => {
       expect(lastFrame()).not.toContain('Thinking');
     });
   });
+
+  describe('styled code blocks', () => {
+    it('renders read_file results in bordered block', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[{
+            name: ToolName.READ_FILE,
+            input: { path: 'config.ts' },
+            status: ToolCallStatus.DONE,
+            result: 'export const config = {\n  port: 3000,\n};',
+          }]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('── read file: config.ts');
+      expect(output).toContain('│ export const config = {');
+      expect(output).toContain('│   port: 3000,');
+      expect(output).toMatch(/─+/);
+    });
+
+    it('renders run_command results in bordered block', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[{
+            name: ToolName.RUN_COMMAND,
+            input: { command: 'bun test' },
+            status: ToolCallStatus.DONE,
+            result: 'Running tests...\nAll tests passed',
+          }]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('── run command: bun test');
+      expect(output).toContain('│ Running tests...');
+      expect(output).toContain('│ All tests passed');
+      expect(output).toMatch(/─+/);
+    });
+
+    it('handles empty content in code block', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[{
+            name: ToolName.READ_FILE,
+            input: { path: 'empty.ts' },
+            status: ToolCallStatus.DONE,
+            result: '',
+          }]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('── read file: empty.ts');
+      expect(output).toContain('│');
+    });
+
+    it('truncates long command names in header', () => {
+      const longCommand = 'bun test --verbose --coverage --watch --reporter=verbose --timeout=5000';
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[{
+            name: ToolName.RUN_COMMAND,
+            input: { command: longCommand },
+            status: ToolCallStatus.DONE,
+            result: 'output',
+          }]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('── run command:');
+      expect(output).toContain('…');
+    });
+  });
 });

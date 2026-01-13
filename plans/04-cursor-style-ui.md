@@ -205,26 +205,26 @@ Show file contents and command output in bordered blocks.
 
 ### Implementation checklist
 
-- [ ] **1) Create block rendering helper**
+- [x] **1) Create block rendering helper**
   - `renderCodeBlock(title: string, content: string, width: number): Line[]`
   - Top border with title
   - Content lines with left border
   - Bottom border
 
-- [ ] **2) Apply to read_file results**
+- [x] **2) Apply to read_file results**
   - Show filename in header
   - Content with syntax-appropriate colors
 
-- [ ] **3) Apply to run_command results**
+- [x] **3) Apply to run_command results**
   - Show command in header
   - Output in monospace style
 
 ### Test cases
 
-- [ ] Block renders with correct width
-- [ ] Title is truncated if too long
-- [ ] Empty content shows empty block
-- [ ] Long content is truncated with indicator
+- [x] Block renders with correct width
+- [x] Title is truncated if too long
+- [x] Empty content shows empty block
+- [x] Long content is truncated with indicator
 
 ---
 
@@ -344,9 +344,9 @@ Allow expanding/collapsing verbose tool outputs.
 - [x] Proper coloring and borders
 
 ### Phase 4 (Code blocks)
-- [ ] File contents in bordered blocks
-- [ ] Command output in bordered blocks
-- [ ] Consistent visual style
+- [x] File contents in bordered blocks
+- [x] Command output in bordered blocks
+- [x] Consistent visual style
 
 ### Phase 5 (Streaming edits)
 - [ ] Code appears character by character
