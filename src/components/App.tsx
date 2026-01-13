@@ -129,34 +129,31 @@ export function App() {
     if (hasBanner) return;
     const page = Math.max(1, transcriptHeight - 1);
 
-    if (key.upArrow && !key.shift) {
-      if (focusedToolCallIndex !== null && focusedToolCallIndex > 0) {
-        setFocusedToolCallIndex(focusedToolCallIndex - 1);
-      } else if (toolCalls.length > 0) {
-        setFocusedToolCallIndex(toolCalls.length - 1);
+    if (key.upArrow) {
+      if (key.ctrl || key.meta) {
+        if (focusedToolCallIndex !== null && focusedToolCallIndex > 0) {
+          setFocusedToolCallIndex(focusedToolCallIndex - 1);
+        } else if (toolCalls.length > 0) {
+          setFocusedToolCallIndex(toolCalls.length - 1);
+        }
       } else {
         setScrollOffset(prev => prev + 1);
       }
       return;
     }
 
-    if (key.downArrow && !key.shift) {
-      if (focusedToolCallIndex !== null && focusedToolCallIndex < toolCalls.length - 1) {
-        setFocusedToolCallIndex(focusedToolCallIndex + 1);
+    if (key.downArrow) {
+      if (key.ctrl || key.meta) {
+        if (focusedToolCallIndex !== null && focusedToolCallIndex < toolCalls.length - 1) {
+          setFocusedToolCallIndex(focusedToolCallIndex + 1);
+        } else if (focusedToolCallIndex === null && toolCalls.length > 0) {
+          setFocusedToolCallIndex(0);
+        } else {
+          setFocusedToolCallIndex(null);
+        }
       } else {
-        setFocusedToolCallIndex(null);
         setScrollOffset(prev => Math.max(0, prev - 1));
       }
-      return;
-    }
-
-    if (key.upArrow && key.shift) {
-      setScrollOffset(prev => prev + 1);
-      return;
-    }
-
-    if (key.downArrow && key.shift) {
-      setScrollOffset(prev => Math.max(0, prev - 1));
       return;
     }
 
