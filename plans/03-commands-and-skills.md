@@ -1,836 +1,302 @@
 # Commands and Skills
 
-Slash commands for reusable prompts, with optional supporting files.
+## Context: what this plan is and when to use it
 
-- **Commands**: Single markdown file (`.prompts/review.md`)
-- **Skills**: Directory with markdown + scripts (`.skills/qr-code/skill.md`)
-- **Safety**: Skills and commands only expand into a prompt. They must never automatically run scripts or shell commands.
+This plan describes a **slash command system** for the agent's UI input, so you can expand short commands into reusable prompts.
 
----
+- **When you want this**: you find yourself repeatedly typing the same instruction ("review this module", "summarize logs", etc.) and you want a local shortcut.
+- **What it enables**:
+  - **Commands**: a single markdown file (example: `.prompts/review.md`) expanded into the prompt sent to the model.
+  - **Skills**: a directory containing `skill.md` plus supporting files (example: `.skills/qr-code/skill.md` and scripts/templates) whose contents are surfaced to the model as context.
+  - **Built-in help**: `/help` lists available commands/skills locally.
+- **How you'd use it in this repo**:
+  - create project-local `.prompts/` or `.skills/` entries for your workflow
+  - type `/help` in the Ink UI to see what's available
+  - type `/review <rest…>` (or `/qr-code <rest…>`) to expand into the agent prompt
 
-# Phase 1: Simple Tests
+Safety rule: this feature only expands **text** for the model. It must never automatically execute scripts or shell commands.
 
-Write these tests first. They define the interface for the simple implementation.
+This plan intentionally avoids implementation-sized code blocks. The source of truth should live in `src/` and be validated by `tests/`.
 
-## Test File Structure
+## Where to start in this repo
+
+- **UI input handling**: `src/components/App.tsx` (see `handleSubmit` function)
+- **Agent boundary**: `src/agent/agent.ts` (where the final prompt is sent via `agent.chat()`)
+- **New module**: `src/commands/` (to be added)
+- **New tests**: `tests/commands/` (to be added)
+
+## Concrete file/API targets
+
+Create a single module that exports the exact helpers:
+
+- **Add**: `src/commands/index.ts`
+  - exports:
+    - `parseSlashCommand(input: string) -> { name: string; rest: string } | null`
+    - `findCommand(name: string, workingDir?: string) -> CommandResult | null`
+    - `listCommands(workingDir?: string) -> string[]`
+    - `expandInput(input: string, workingDir?: string) -> ExpandResult`
+
+Minimal return types to standardize behavior:
 
 ```
-tests/
-  commands/
-    index.test.ts         # Command discovery and parsing tests
-```
-
-## Command Discovery Tests
-
-```typescript
-// tests/commands/index.test.ts
-import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
-import { findCommand, listCommands, parseSlashCommand, expandInput } from '../../src/commands';
-import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-
-const TEST_DIR = join(import.meta.dir, '../tmp/commands-test');
-
-describe('parseSlashCommand', () => {
-  test('parses /command → name="command", rest=""', () => {
-    const result = parseSlashCommand('/review');
-    
-    expect(result).not.toBeNull();
-    expect(result!.name).toBe('review');
-    expect(result!.rest).toBe('');
-  });
-
-  test('parses /command extra text → name="command", rest="extra text"', () => {
-    const result = parseSlashCommand('/review the auth module');
-    
-    expect(result!.name).toBe('review');
-    expect(result!.rest).toBe('the auth module');
-  });
-
-  test('non-slash input returns null', () => {
-    const result = parseSlashCommand('just a message');
-    
-    expect(result).toBeNull();
-  });
-
-  test('/help is recognized', () => {
-    const result = parseSlashCommand('/help');
-    
-    expect(result!.name).toBe('help');
-  });
-});
-
-describe('expandInput', () => {
-  beforeEach(() => {
-    mkdirSync(join(TEST_DIR, '.prompts'), { recursive: true });
-    mkdirSync(join(TEST_DIR, '.skills', 'qr-code'), { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
-
-  test('/help returns a local response and does not call the agent', () => {
-    writeFileSync(join(TEST_DIR, '.prompts', 'review.md'), 'Review code.');
-    const result = expandInput('/help', TEST_DIR);
-    expect(result.kind).toBe('local');
-    if (result.kind === 'local') {
-      expect(result.userText).toBe('/help');
-      expect(result.outputText).toContain('/review');
-    }
-  });
-
-  test('unknown command returns a local error', () => {
-    const result = expandInput('/nope', TEST_DIR);
-    expect(result.kind).toBe('local');
-    if (result.kind === 'local') {
-      expect(result.error).toBe(true);
-      expect(result.outputText).toContain('Unknown command');
-    }
-  });
-
-  test('command expands to an agent prompt, appending rest text', () => {
-    writeFileSync(join(TEST_DIR, '.prompts', 'review.md'), 'Review this.');
-    const result = expandInput('/review the auth module', TEST_DIR);
-    expect(result.kind).toBe('agent');
-    if (result.kind === 'agent') {
-      expect(result.userText).toBe('/review the auth module');
-      expect(result.prompt).toContain('Review this.');
-      expect(result.prompt).toContain('the auth module');
-    }
-  });
-
-  test('skill expansion includes skill file listing but does not execute anything', () => {
-    const skillPath = join(TEST_DIR, '.skills', 'qr-code');
-    writeFileSync(join(skillPath, 'skill.md'), 'Generate a QR.');
-    writeFileSync(join(skillPath, 'make_qr.py'), 'print("qr")');
-    const result = expandInput('/qr-code', TEST_DIR);
-    expect(result.kind).toBe('agent');
-    if (result.kind === 'agent') {
-      expect(result.prompt).toContain('Generate a QR.');
-      expect(result.prompt).toContain('Files in skill');
-      expect(result.prompt).toContain('make_qr.py');
-    }
-  });
-});
-
-describe('findCommand', () => {
-  beforeEach(() => {
-    mkdirSync(join(TEST_DIR, '.prompts'), { recursive: true });
-    mkdirSync(join(TEST_DIR, '.skills', 'qr-code'), { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
-
-  test('finds command file at .prompts/name.md', () => {
-    writeFileSync(join(TEST_DIR, '.prompts', 'review.md'), 'Review code.');
-    
-    const result = findCommand('review', TEST_DIR);
-    
-    expect(result).not.toBeNull();
-    expect(result!.type).toBe('command');
-    expect(result!.content).toBe('Review code.');
-  });
-
-  test('finds skill at .skills/name/skill.md', () => {
-    writeFileSync(join(TEST_DIR, '.skills', 'qr-code', 'skill.md'), 'Generate QR.');
-    
-    const result = findCommand('qr-code', TEST_DIR);
-    
-    expect(result).not.toBeNull();
-    expect(result!.type).toBe('skill');
-    expect(result!.content).toBe('Generate QR.');
-  });
-
-  test('returns null for nonexistent commands', () => {
-    const result = findCommand('nonexistent', TEST_DIR);
-    
-    expect(result).toBeNull();
-  });
-
-  test('skill {{skill_path}} is replaced with actual path', () => {
-    const skillPath = join(TEST_DIR, '.skills', 'qr-code');
-    writeFileSync(join(skillPath, 'skill.md'), 'Run {{skill_path}}/script.py');
-    
-    const result = findCommand('qr-code', TEST_DIR);
-    
-    expect(result!.content).toContain(skillPath);
-    expect(result!.content).not.toContain('{{skill_path}}');
-  });
-
-  test('skill files are listed', () => {
-    const skillPath = join(TEST_DIR, '.skills', 'qr-code');
-    writeFileSync(join(skillPath, 'skill.md'), 'Skill');
-    writeFileSync(join(skillPath, 'make_qr.py'), '# Python');
-    
-    const result = findCommand('qr-code', TEST_DIR);
-    
-    expect(result!.skillFiles).toContain('make_qr.py');
-  });
-});
-
-describe('listCommands', () => {
-  beforeEach(() => {
-    mkdirSync(join(TEST_DIR, '.prompts'), { recursive: true });
-    mkdirSync(join(TEST_DIR, '.skills', 'qr-code'), { recursive: true });
-  });
-
-  afterEach(() => {
-    rmSync(TEST_DIR, { recursive: true, force: true });
-  });
-
-  test('returns all available commands and skills', () => {
-    writeFileSync(join(TEST_DIR, '.prompts', 'review.md'), 'Review');
-    writeFileSync(join(TEST_DIR, '.skills', 'qr-code', 'skill.md'), 'QR');
-    
-    const commands = listCommands(TEST_DIR);
-    
-    expect(commands).toContain('review');
-    expect(commands).toContain('qr-code');
-  });
-});
-```
-
-## Simple Test Checklist
-
-- [ ] `parseSlashCommand('/command')` returns name and empty rest
-- [ ] `parseSlashCommand('/command text')` returns name and rest
-- [ ] `parseSlashCommand('text')` returns null
-- [ ] `findCommand('name')` finds `.prompts/name.md`
-- [ ] `findCommand('name')` finds `.skills/name/skill.md`
-- [ ] `findCommand('missing')` returns null
-- [ ] Skill `{{skill_path}}` is replaced
-- [ ] Skill files are listed in result
-- [ ] `listCommands()` returns all commands and skills
-
----
-
-# Phase 2: Simple Implementation
-
-Implement this to make the tests pass.
-
-## Core Implementation (~60 LOC)
-
-```typescript
-// src/commands/index.ts
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { join, basename } from 'node:path';
-import { homedir } from 'node:os';
-
-interface CommandResult {
-  type: 'command' | 'skill';
+CommandResult = {
+  kind: 'command' | 'skill';
   name: string;
   content: string;
-  skillPath?: string;
-  skillFiles?: string[];
+  files?: string[];  // for skills: relative paths of files in skill directory
 }
 
-type ExpandResult =
+ExpandResult =
   | { kind: 'agent'; userText: string; prompt: string }
-  | { kind: 'local'; userText: string; outputText: string; error?: boolean };
-
-export function findCommand(name: string, workingDir: string = process.cwd()): CommandResult | null {
-  const commandDirs = [
-    join(workingDir, '.prompts'),
-    join(homedir(), '.config', 'coding-agent', 'prompts'),
-  ];
-  
-  const skillDirs = [
-    join(workingDir, '.skills'),
-    join(homedir(), '.config', 'coding-agent', 'skills'),
-  ];
-
-  // Check commands first
-  for (const dir of commandDirs) {
-    const path = join(dir, `${name}.md`);
-    if (existsSync(path)) {
-      return {
-        type: 'command',
-        name,
-        content: readFileSync(path, 'utf-8'),
-      };
-    }
-  }
-
-  // Check skills
-  for (const dir of skillDirs) {
-    const skillPath = join(dir, name);
-    const skillMdPath = join(skillPath, 'skill.md');
-    if (existsSync(skillMdPath)) {
-      const content = readFileSync(skillMdPath, 'utf-8');
-      const files = listSkillFiles(skillPath);
-      
-      return {
-        type: 'skill',
-        name,
-        content: content.replace(/\{\{skill_path\}\}/g, skillPath),
-        skillPath,
-        skillFiles: files,
-      };
-    }
-  }
-
-  return null;
-}
-
-function listSkillFiles(skillPath: string): string[] {
-  const files: string[] = [];
-  
-  function walk(dir: string, prefix = '') {
-    for (const entry of readdirSync(dir)) {
-      if (entry === 'skill.md') continue;
-      
-      const fullPath = join(dir, entry);
-      const relativePath = prefix ? `${prefix}/${entry}` : entry;
-      
-      if (statSync(fullPath).isDirectory()) {
-        walk(fullPath, relativePath);
-      } else {
-        files.push(relativePath);
-      }
-    }
-  }
-  
-  walk(skillPath);
-  return files;
-}
-
-export function listCommands(workingDir: string = process.cwd()): string[] {
-  const commands: string[] = [];
-  
-  const commandDirs = [
-    join(workingDir, '.prompts'),
-    join(homedir(), '.config', 'coding-agent', 'prompts'),
-  ];
-  
-  const skillDirs = [
-    join(workingDir, '.skills'),
-    join(homedir(), '.config', 'coding-agent', 'skills'),
-  ];
-  
-  for (const dir of commandDirs) {
-    if (!existsSync(dir)) continue;
-    const files = readdirSync(dir).filter(f => f.endsWith('.md'));
-    commands.push(...files.map(f => f.replace('.md', '')));
-  }
-  
-  for (const dir of skillDirs) {
-    if (!existsSync(dir)) continue;
-    const entries = readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isDirectory() && existsSync(join(dir, entry.name, 'skill.md'))) {
-        commands.push(entry.name);
-      }
-    }
-  }
-  
-  return [...new Set(commands)];
-}
-
-export function parseSlashCommand(input: string): { name: string; rest: string } | null {
-  if (!input.startsWith('/')) return null;
-  
-  const spaceIndex = input.indexOf(' ');
-  if (spaceIndex === -1) {
-    return { name: input.slice(1), rest: '' };
-  }
-  
-  return {
-    name: input.slice(1, spaceIndex),
-    rest: input.slice(spaceIndex + 1),
-  };
-}
-
-export function expandInput(input: string, workingDir: string = process.cwd()): ExpandResult {
-  const parsed = parseSlashCommand(input);
-  if (!parsed) return { kind: 'agent', userText: input, prompt: input };
-
-  if (parsed.name === 'help') {
-    const commands = listCommands(workingDir);
-    const outputText =
-      commands.length > 0
-        ? `Available commands:\n${commands.map(c => `  /${c}`).join('\n')}`
-        : 'No custom commands found. Add .md files to .prompts/';
-    return { kind: 'local', userText: input, outputText };
-  }
-
-  const command = findCommand(parsed.name, workingDir);
-  if (!command) {
-    return {
-      kind: 'local',
-      userText: input,
-      outputText: `Unknown command: /${parsed.name}. Type /help for available commands.`,
-      error: true,
-    };
-  }
-
-  let prompt = command.content;
-
-  if (command.type === 'skill' && command.skillFiles && command.skillFiles.length > 0) {
-    prompt += `\n\nFiles in skill (${command.skillPath}):\n`;
-    prompt += command.skillFiles.map(f => `- ${f}`).join('\n');
-  }
-
-  if (parsed.rest) {
-    prompt += `\n\n${parsed.rest}`;
-  }
-
-  return { kind: 'agent', userText: input, prompt };
-}
+  | { kind: 'local'; userText: string; outputText: string; error?: boolean }
 ```
 
-## App.tsx Integration
+### Search locations and precedence
 
-```typescript
-// src/components/App.tsx - Update handleSubmit
-import { expandInput } from '../commands';
+Search in this order (first match wins):
 
-const handleSubmit = async (text: string) => {
-  const expanded = expandInput(text);
-  setMessages(prev => [...prev, { role: MessageRole.USER, content: expanded.userText }]);
+1. **Project commands**: `<workingDir>/.prompts/<name>.md`
+2. **Project skills**: `<workingDir>/.skills/<name>/skill.md`
+3. **Global commands**: `<configDir>/prompts/<name>.md`
+4. **Global skills**: `<configDir>/skills/<name>/skill.md`
 
-  if (expanded.kind === 'local') {
-    setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: expanded.outputText }]);
-    if (expanded.error) setError(expanded.outputText);
-    return;
-  }
+**Config directory** (cross-platform):
+- macOS: `~/Library/Application Support/nila-code/`
+- Linux: `~/.config/nila-code/`
+- Windows: `%APPDATA%/nila-code/`
 
-  const response = await agent.chat(expanded.prompt);
-};
-```
+Use `process.platform` to determine the correct path, or use a library like `env-paths`.
 
-## Simple Implementation Checklist
+**Conflict resolution**: if both `.prompts/review.md` and `.skills/review/skill.md` exist, the command (`.prompts/`) wins. This matches the search order.
 
-- [ ] Create `src/commands/index.ts`
-- [ ] Implement `parseSlashCommand(input)`
-- [ ] Implement `expandInput(input, workingDir)`
-- [ ] Implement `findCommand(name, workingDir)`
-- [ ] Check `.prompts/` for commands
-- [ ] Check `.skills/` for skills
-- [ ] Replace `{{skill_path}}` in skill content
-- [ ] List skill files
-- [ ] Implement `listCommands(workingDir)`
-- [ ] Update App.tsx to intercept slash commands
-- [ ] Handle `/help` built-in
-- [ ] Handle unknown commands with error
-- [ ] Ensure skills only expand prompts and never auto-run scripts
+### Integration point
+
+- **Modify**: `src/components/App.tsx` `handleSubmit(text: string)`
+  - call `expandInput(text, cwd())`
+  - if `kind === 'local'`:
+    - append user message with `userText`
+    - append assistant message with `outputText`
+    - return without calling `agent.chat`
+  - if `kind === 'agent'`:
+    - append user message with `userText`
+    - call `agent.chat(prompt)`
 
 ---
 
-# Phase 3: Production Tests
+## Phase 1: Tests (define the minimal feature)
 
-After simple implementation works, add these tests for production features.
+## Concrete examples (what should happen)
 
-## Additional Test Files
+### Example: command file
+
+Project layout:
 
 ```
-tests/
-  commands/
-    registry.test.ts      # CommandRegistry tests
-    parser.test.ts        # Input parsing tests
-    executor.test.ts      # Command execution tests
+.prompts/
+  review.md
 ```
 
-## Frontmatter Parsing Tests
+Example `.prompts/review.md` content (short on purpose):
 
-```typescript
-// tests/commands/parser.test.ts
-describe('frontmatter parsing', () => {
-  test('extracts name from YAML frontmatter', () => {
-    const content = `---
-name: review
-description: Code review prompt
----
-
-Review this code.`;
-    
-    const { frontmatter, body } = parseFrontmatter(content);
-    
-    expect(frontmatter.name).toBe('review');
-    expect(frontmatter.description).toBe('Code review prompt');
-    expect(body).toBe('Review this code.');
-  });
-
-  test('handles files without frontmatter', () => {
-    const content = 'Just content, no frontmatter.';
-    
-    const { frontmatter, body } = parseFrontmatter(content);
-    
-    expect(frontmatter).toEqual({});
-    expect(body).toBe(content);
-  });
-
-  test('extracts parameters array', () => {
-    const content = `---
-parameters:
-  - name: env
-    required: true
-  - name: dry_run
-    default: "false"
----
-Deploy.`;
-    
-    const { frontmatter } = parseFrontmatter(content);
-    
-    expect(frontmatter.parameters).toHaveLength(2);
-  });
-});
+```
+Review the code for correctness and readability.
+Return a short list of actionable issues.
 ```
 
-## Parameter Tests
+User input and expected behavior:
 
-```typescript
-// tests/commands/executor.test.ts
-describe('parameter handling', () => {
-  test('parses key=value arguments', () => {
-    const result = parseSlashCommand('/deploy env=staging');
-    
-    expect(result!.args).toEqual({ env: 'staging' });
-  });
+- input: `/review src/agent/agent.ts`
+- UI shows user message: `/review src/agent/agent.ts`
+- prompt sent to agent contains:
+  - the file content above
+  - the appended rest text: `src/agent/agent.ts`
 
-  test('parses quoted values with spaces', () => {
-    const result = parseSlashCommand('/deploy env="my staging server"');
-    
-    expect(result!.args.env).toBe('my staging server');
-  });
+### Example: skill directory
 
-  test('substitutes {{param}} in content', () => {
-    const content = 'Deploy to {{env}}.';
-    const args = { env: 'staging' };
-    
-    const result = renderTemplate(content, args);
-    
-    expect(result).toBe('Deploy to staging.');
-  });
+Project layout:
 
-  test('applies default values for missing params', () => {
-    const params = [{ name: 'env', required: true }, { name: 'dry_run', default: 'false' }];
-    const provided = { env: 'prod' };
-    
-    const resolved = resolveArgs(params, provided);
-    
-    expect(resolved.dry_run).toBe('false');
-  });
-
-  test('errors on missing required params', () => {
-    const params = [{ name: 'env', required: true }];
-    const provided = {};
-    
-    expect(() => resolveArgs(params, provided)).toThrow('env');
-  });
-});
+```
+.skills/
+  qr-code/
+    skill.md
+    make_qr.py
 ```
 
-## Conditional Template Tests
+Example `.skills/qr-code/skill.md` content:
 
-```typescript
-describe('template conditionals', () => {
-  test('{{#if param}}...{{/if}} includes when param present', () => {
-    const content = '{{#if verbose}}Verbose output{{/if}}';
-    const args = { verbose: 'true' };
-    
-    const result = renderTemplate(content, args);
-    
-    expect(result).toContain('Verbose output');
-  });
-
-  test('{{#if param}}...{{else}}...{{/if}} handles else', () => {
-    const content = '{{#if verbose}}Verbose{{else}}Quiet{{/if}}';
-    const args = {};
-    
-    const result = renderTemplate(content, args);
-    
-    expect(result).toBe('Quiet');
-  });
-});
+```
+Generate a QR code.
+Do not execute files; describe how to run them.
+Skill path: {{skill_path}}
 ```
 
-## Fuzzy Search Tests
+User input and expected behavior:
 
-```typescript
-describe('fuzzy search', () => {
-  test('suggests similar commands for typos', () => {
-    registry.add('review', { content: '...' });
-    
-    const suggestions = registry.search('revew');
-    
-    expect(suggestions.map(s => s.name)).toContain('review');
-  });
+- input: `/qr-code "hello world"`
+- prompt sent to agent contains:
+  - skill.md content with `{{skill_path}}` replaced with absolute path to `.skills/qr-code/`
+  - a "Files in skill:" section listing `make_qr.py`
+  - appended rest text: `"hello world"` (or without quotes depending on parsing phase)
 
-  test('/help query filters results', () => {
-    registry.add('review', { description: 'Code review' });
-    registry.add('deploy', { description: 'Deploy app' });
-    
-    const results = registry.search('review');
-    
-    expect(results.map(r => r.name)).toContain('review');
-    expect(results.map(r => r.name)).not.toContain('deploy');
-  });
-});
-```
+### Parsing
 
-## Production Test Checklist
+- [ ] `/name` parses into `{ name, rest: '' }`
+- [ ] `/name with extra text` parses into `{ name, rest: 'with extra text' }`
+- [ ] non-slash input returns null (not a command)
+- [ ] `/help` is recognized like any other slash command name
+- [ ] `/Name` normalizes to lowercase `name` for lookup
 
-- [ ] Frontmatter parsing extracts name/description
-- [ ] Frontmatter parsing extracts parameters array
-- [ ] Files without frontmatter use filename as name
-- [ ] `key=value` arguments parsed from input
-- [ ] Quoted values with spaces handled
-- [ ] `{{param}}` substituted in content
-- [ ] Default values applied
-- [ ] Missing required params throw error
-- [ ] `{{#if}}` conditionals work
-- [ ] `{{else}}` branch works
-- [ ] Fuzzy search finds partial matches
-- [ ] Help filters by query
+### Discovery
+
+- [ ] `findCommand(name, dir)` loads a command from `.prompts/<name>.md` if present
+- [ ] `findCommand(name, dir)` loads a skill from `.skills/<name>/skill.md` if present
+- [ ] missing returns null
+- [ ] skill content replaces `{{skill_path}}` with the concrete absolute directory path
+- [ ] skill discovery returns a list of skill files (excluding `skill.md`) with relative paths
+
+### Listing
+
+- [ ] `listCommands(dir)` returns all available command names and skill names, de-duped
+- [ ] project commands/skills appear before global ones
+- [ ] duplicate names (project overriding global) only appear once
+
+### Expansion
+
+- [ ] `/help` returns a local response listing commands/skills and does not call the agent
+- [ ] unknown `/name` returns a local error message pointing to `/help`
+- [ ] known command expands to an agent prompt and appends `rest` at the end
+- [ ] known skill expands to an agent prompt, includes a file listing, and appends `rest`
+
+### Suggested test cases (more specific)
+
+- [ ] **/help output contains discovered items**:
+  - create `.prompts/review.md` and `.skills/qr-code/skill.md` in a temp workspace
+  - call expand on `/help`
+  - assert output includes `/review` and `/qr-code`
+- [ ] **unknown command is local error**:
+  - call expand on `/nope`
+  - assert kind is local + error is true + output mentions `/help`
+- [ ] **command expansion includes rest**:
+  - expand `/review the auth module`
+  - assert prompt contains both the file content and `the auth module`
+- [ ] **skill file listing is names only**:
+  - create skill with `make_qr.py`
+  - expand `/qr-code`
+  - assert prompt contains `make_qr.py`
+  - assert prompt does not include the contents of `make_qr.py`
+- [ ] **project overrides global**:
+  - create both project `.prompts/foo.md` and global `prompts/foo.md`
+  - expand `/foo`
+  - assert the project version content is used
+- [ ] **case insensitive lookup**:
+  - create `.prompts/Review.md`
+  - expand `/review`
+  - assert it finds the command
+
+### Test file mapping (exactly what to add)
+
+- **Add**: `tests/commands/index.test.ts`
+  - use `mkdtempSync` + `rmSync` (same pattern as existing tool tests)
+  - create `.prompts/` and `.skills/` under the temp dir
+  - run assertions against `parseSlashCommand`, `findCommand`, `listCommands`, `expandInput`
 
 ---
 
-# Phase 4: Production Implementation
+## Phase 2: Implementation (minimal)
 
-Implement after production tests are written.
+### Files to add / modify
 
-## Dependencies
+- [ ] **Add**: `src/commands/index.ts` with exports
+- [ ] **Modify**: `src/components/App.tsx` input submission path to expand commands before calling `agent.chat`
 
-```bash
-bun add yaml fuse.js
-```
+## Implementation checklist (ordered)
 
-## Architecture
+- [ ] **1) Add `src/commands/index.ts` with the 4 exports**
+  - `parseSlashCommand`, `findCommand`, `listCommands`, `expandInput`
+  - Keep return types exactly as specified (so tests are stable)
+  - Verify by adding `tests/commands/index.test.ts` and running only parsing-related cases first
 
-```
-src/
-  commands/
-    registry.ts       # Unified discovery
-    parser.ts         # Frontmatter and input parsing
-    executor.ts       # Command execution with templates
-    types.ts          # Shared types
-    index.ts          # Barrel export
-```
+- [ ] **2) Implement project-local discovery**
+  - `.prompts/<name>.md`
+  - `.skills/<name>/skill.md`
+  - Verify: tests that create a temp `.prompts` and `.skills` workspace pass
 
-## Types
+- [ ] **3) Add config directory helper**
+  - Create `getConfigDir(): string` that returns platform-appropriate path
+  - macOS: `~/Library/Application Support/nila-code/`
+  - Linux: `~/.config/nila-code/`
+  - Windows: `%APPDATA%/nila-code/`
+  - Verify: unit test that mocks `process.platform` and checks paths
 
-```typescript
-// src/commands/types.ts
-export interface Parameter {
-  name: string;
-  description?: string;
-  required?: boolean;
-  default?: string;
-}
+- [ ] **4) Implement global discovery**
+  - `<configDir>/prompts/<name>.md`
+  - `<configDir>/skills/<name>/skill.md`
+  - Search after project-local (project takes precedence)
 
-export interface BaseCommand {
-  name: string;
-  description: string;
-  parameters: Parameter[];
-  source: 'project' | 'global';
-  path: string;
-}
+- [ ] **5) Implement expansion and `/help`**
+  - `/help` returns `{ kind: 'local' ... }` and lists command names as `/name`
+  - Unknown `/x` returns local error and suggests `/help`
+  - Known commands/skills return `{ kind: 'agent', prompt: ... }`
 
-export interface SimpleCommand extends BaseCommand {
-  type: 'command';
-  content: string;
-}
+- [ ] **6) Wire into the UI (`src/components/App.tsx`)**
+  - In `handleSubmit`, call `expandInput(text, cwd())`
+  - Always append user message with `userText` (the original input)
+  - If local:
+    - append assistant message with `outputText`
+    - set error state if `error: true`
+    - return early (no agent call)
+  - If agent:
+    - call `agent.chat(prompt)`
+    - append assistant message with response
 
-export interface Skill extends BaseCommand {
-  type: 'skill';
-  content: string;
-  skillPath: string;
-  files: string[];
-}
+### Search locations
 
-export type Command = SimpleCommand | Skill;
+- **Project commands**: `<workingDir>/.prompts/*.md`
+- **Project skills**: `<workingDir>/.skills/<name>/skill.md`
+- **Global commands**: `<configDir>/prompts/*.md`
+- **Global skills**: `<configDir>/skills/<name>/skill.md`
 
-export interface ParsedInput {
-  name: string;
-  args: Record<string, string>;
-  rest: string;
-}
-```
+### Expansion rules
 
-## CommandRegistry
+- **User message shown in UI**: always show the literal user input (e.g. `/review the auth module`)
+- **Prompt sent to model**:
+  - base content comes from the command/skill markdown
+  - if skill: append "Files in skill:" with the relative file list
+  - if `rest` exists: append it after the content
 
-```typescript
-// src/commands/registry.ts
-import Fuse from 'fuse.js';
-import yaml from 'yaml';
-import { Command } from './types';
+### Expected strings (help + errors)
 
-export class CommandRegistry {
-  private commands = new Map<string, Command>();
-  private searchIndex: Fuse<Command>;
+Keep these consistent so tests can assert on them:
 
-  async initialize(workingDir: string): Promise<void> {
-    // Load from .prompts/ and .skills/
-    // Build fuzzy search index
-    this.searchIndex = new Fuse(Array.from(this.commands.values()), {
-      keys: ['name', 'description'],
-      threshold: 0.4,
-    });
-  }
+- help header includes: `Available commands:`
+- unknown command includes: `Unknown command: /<name>`
+- unknown command includes: `Type /help`
 
-  get(name: string): Command | undefined {
-    return this.commands.get(name);
-  }
+### Built-in `/help`
 
-  search(query: string): Command[] {
-    return this.searchIndex.search(query).map(r => r.item);
-  }
+- [ ] prints available commands/skills (including both project + global)
+- [ ] shows command source (project vs global) for clarity
+- [ ] optionally supports `/help <query>` later (Phase 3+)
 
-  list(): Command[] {
-    return Array.from(this.commands.values());
-  }
-}
-```
+---
 
-## Input Parser
+## Phase 3+: Production hardening (optional)
 
-```typescript
-// src/commands/parser.ts
-export function parseSlashCommand(input: string): ParsedInput | null {
-  if (!input.startsWith('/')) return null;
+- [ ] **Dependencies**: add YAML parsing + fuzzy search libraries if you implement frontmatter/search
+- [ ] **Frontmatter metadata**: support YAML frontmatter in prompt files (name/description/parameters)
+- [ ] **Parameter parsing**: support `key=value` arguments, quoted values, and keep remaining tokens as rest
+- [ ] **Template rendering**: `{{param}}` substitutions and simple conditionals
+- [ ] **Fuzzy search**: suggest commands for typos and allow `/help <query>` filtering
+- [ ] **Project override of global**: allow `.prompts/.ignore` to disable specific global commands
+- [ ] **Skill file auto-read**: optionally allow skills to mark certain files as "include content in prompt"
 
-  const trimmed = input.slice(1).trim();
-  if (!trimmed) return null;
+---
 
-  const firstSpace = trimmed.indexOf(' ');
-  const name = firstSpace === -1 ? trimmed : trimmed.slice(0, firstSpace);
-  const remainder = firstSpace === -1 ? '' : trimmed.slice(firstSpace + 1);
+## Definition of done
 
-  const tokens = tokenize(remainder);
-  const args: Record<string, string> = {};
-  const restTokens: string[] = [];
-
-  for (const token of tokens) {
-    const eqIndex = token.indexOf('=');
-    if (eqIndex > 0) {
-      const key = token.slice(0, eqIndex);
-      const value = token.slice(eqIndex + 1);
-      args[key] = value;
-      continue;
-    }
-    restTokens.push(token);
-  }
-
-  return { name, args, rest: restTokens.join(' ') };
-}
-
-function tokenize(input: string): string[] {
-  const tokens: string[] = [];
-  let current = '';
-  let inQuotes = false;
-
-  for (let i = 0; i < input.length; i++) {
-    const ch = input[i];
-    if (ch === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-    if (!inQuotes && /\s/.test(ch)) {
-      if (current.length > 0) tokens.push(current);
-      current = '';
-      continue;
-    }
-    current += ch;
-  }
-
-  if (current.length > 0) tokens.push(current);
-  return tokens;
-}
-
-export function parseFrontmatter(content: string): { frontmatter: Record<string, unknown>; body: string } {
-  const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  
-  if (!match) return { frontmatter: {}, body: content };
-  
-  try {
-    return { frontmatter: yaml.parse(match[1]), body: match[2].trim() };
-  } catch {
-    return { frontmatter: {}, body: content };
-  }
-}
-```
-
-## CommandExecutor
-
-```typescript
-// src/commands/executor.ts
-export class CommandExecutor {
-  constructor(private registry: CommandRegistry) {}
-
-  execute(input: string): ExecuteResult {
-    const parsed = parseSlashCommand(input);
-    if (!parsed) return { type: 'not_command' };
-    
-    if (parsed.name === 'help') {
-      return this.handleHelp(parsed.rest);
-    }
-    
-    const command = this.registry.get(parsed.name);
-    
-    if (!command) {
-      const suggestions = this.registry.search(parsed.name).slice(0, 3);
-      return {
-        type: 'error',
-        message: `Unknown command: /${parsed.name}`,
-        suggestions: suggestions.map(s => s.name),
-      };
-    }
-    
-    const resolvedArgs = this.resolveArgs(command.parameters, parsed.args);
-    const prompt = this.renderTemplate(command, resolvedArgs, parsed.rest);
-    
-    return { type: 'success', prompt, command };
-  }
-
-  private renderTemplate(command: Command, args: Record<string, string>, rest: string): string {
-    let content = command.content;
-    
-    // Substitute {{variable}}
-    content = content.replace(/\{\{(\w+)\}\}/g, (_, name) => {
-      if (name === 'skill_path' && command.type === 'skill') return command.skillPath;
-      return args[name] ?? '';
-    });
-    
-    // Handle {{#if var}}...{{else}}...{{/if}}
-    content = content.replace(
-      /\{\{#if (\w+)\}\}([\s\S]*?)(?:\{\{else\}\}([\s\S]*?))?\{\{\/if\}\}/g,
-      (_, name, ifContent, elseContent = '') => args[name] ? ifContent.trim() : elseContent.trim()
-    );
-    
-    if (rest) content += `\n\n${rest}`;
-    
-    return content.trim();
-  }
-}
-```
-
-## Production Implementation Checklist
-
-### Registry
-- [ ] Create `CommandRegistry` class
-- [ ] Load from `.prompts/` and `.skills/`
-- [ ] Load from global config directory
-- [ ] Parse YAML frontmatter
-- [ ] Build fuzzy search index
-- [ ] Project takes precedence over global
-
-### Input Parsing
-- [ ] Parse `key=value` arguments
-- [ ] Handle quoted values with spaces
-- [ ] Capture remaining text as rest
-
-### Execution
-- [ ] Validate required parameters
-- [ ] Apply default values
-- [ ] Substitute `{{variable}}`
-- [ ] Handle `{{#if}}` conditionals
-
-### Help System
-- [ ] `/help` lists all commands
-- [ ] `/help query` filters by search
-- [ ] Show parameters (required vs optional)
-- [ ] Show descriptions
-
+- [ ] `/help` works end-to-end in the UI
+- [ ] Unknown commands error locally (no agent call)
+- [ ] Known commands/skills expand into an agent prompt consistently
+- [ ] Skills never execute code; they only surface text and file names
+- [ ] Project commands/skills take precedence over global ones
+- [ ] Cross-platform config directory support works on macOS, Linux, and Windows

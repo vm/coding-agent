@@ -1,877 +1,309 @@
 # Plan Mode
 
-A mode where the agent creates implementation plans without editing files.
+## Context: what this plan is and when to use it
+
+This plan describes a **read-only "planning" mode** for the agent: the agent can inspect the repo (read/list/run safe commands) but **cannot edit files**.
+
+- **When you want this**: you want an implementation plan first (file list + steps), without any modifications happening automatically.
+- **What it enables**:
+  - safer exploration (no accidental edits)
+  - structured output you can review before applying changes
+- **How you'd use it in this repo**:
+  - run the agent in plan mode to produce a plan document you can paste into an issue/PR description
+  - optionally serialize the plan to a file via a CLI flag
+
+This plan intentionally avoids implementation-sized code blocks. The source of truth should live in `src/` and be validated by `tests/`.
+
+## How you'd run it (intended UX)
+
+- **Interactive**: `bun run start`
+- **Plan mode**: `bun run start plan "your request here"`
+- **Plan mode to file**: `bun run start plan "your request here" --output plan.md`
+
+## Tool availability (what plan mode allows)
+
+Plan mode should make it impossible (or at least very hard) for the model to mutate the repo.
+
+Minimum allowed tools:
+
+- [x] `read_file`
+- [x] `list_files`
+- [ ] `edit_file` (blocked)
+- [ ] `run_command` (blocked — see rationale below)
+
+### Why block `run_command` entirely
+
+Prompt-only safety ("please only run read-only commands") is insufficient:
+- The model can be jailbroken or confused into running destructive commands
+- Allowlist enforcement is complex (need to parse shell syntax, handle pipes, etc.)
+- The safest approach is to remove the capability entirely in plan mode
+
+If you need command output in plan mode (e.g., `git status`), consider:
+- Pre-running specific commands and injecting results into the system prompt
+- Adding a separate `git_status` read-only tool
+- Running plan mode with explicit user approval for each command (future feature)
+
+## Concrete file/API targets
+
+On `main`, the agent doesn't currently support plan mode. Add it by extending `AgentOptions`:
+
+- **Modify**: `src/agent/types.ts`
+  - add `AgentMode` type: `'normal' | 'plan'`
+  - extend `AgentOptions` with:
+    - `mode?: AgentMode`
+    - `systemPrompt?: string`
+    - `toolFilter?: (name: string) => boolean`
+- **Modify**: `src/agent/agent.ts`
+  - in `makeApiCallWithRetry`, use `system: this.options.systemPrompt ?? getSystemPrompt()`
+  - filter tools based on `this.options.toolFilter` before passing to API
+  - add `getToolsForMode()` helper that filters out `edit_file` and `run_command` in plan mode
+- **Add**: `src/agent/plan-agent.ts`
+  - exports `createPlanAgent(client?: Anthropic): Agent`
+  - sets:
+    - `mode: 'plan'`
+    - `systemPrompt` to a "PLAN MODE" prompt
+    - `toolFilter` that blocks `edit_file` and `run_command`
+- **Modify**: `src/index.tsx`
+  - add a `plan` subcommand that uses `createPlanAgent()` and exits after printing the response
+  - support optional `--output <file>` to write the plan text
+
+This matches the existing architecture: Agent config is passed through the constructor; tools are filtered before being sent to the model.
+
+## Where to start in this repo
+
+- **Entry point / argument routing**: `src/index.tsx`
+- **Agent core**: `src/agent/agent.ts`, `src/agent/types.ts`
+- **Existing tests to extend**: `tests/agent/agent.test.ts`, `tests/index.test.ts`
 
 ---
 
-# Phase 1: Simple Tests
+## Phase 1: Tests (define behavior)
 
-Write these tests first. They define the interface for the simple implementation.
+### Agent tool filtering
 
-## Test File Structure
+- [ ] **Blocks editing**: in plan mode, `edit_file` is not in the tools array sent to the API
+- [ ] **Blocks commands**: in plan mode, `run_command` is not in the tools array sent to the API
+- [ ] **Allows reads**: `read_file` continues to work normally
+- [ ] **Allows listing**: `list_files` continues to work normally
 
-```
-tests/
-  agent/
-    agent.test.ts         # Update existing - add mode tests
-  index.test.ts           # Update existing - add CLI tests
-```
+### System prompt behavior
 
-## Agent Mode Tests
+- [ ] **Plan prompt differs**: plan mode uses a plan-specific system prompt that makes "no edits" explicit
+- [ ] **Includes working directory**: prompt includes the current working directory path for grounding
+- [ ] **Custom prompt override**: when `systemPrompt` is provided in options, it overrides the default
 
-```typescript
-// tests/agent/agent.test.ts - Add these tests
-describe('Agent plan mode', () => {
-  test('tool interceptor blocks edit_file', async () => {
-    const mockCreate = mock<(params: CreateMessageParams) => Promise<MockApiResponse>>(() =>
-      Promise.resolve({
-        content: [
-          { type: 'tool_use', id: 'tool1', name: 'edit_file', input: { path: 'test.txt', old_str: '', new_str: 'content' } }
-        ],
-        stop_reason: 'tool_use',
-        usage: { input_tokens: 100, output_tokens: 200 },
-      })
-    );
-    
-    const mockClient = { messages: { create: mockCreate } } as unknown as Anthropic;
-    
-    const agent = new Agent(mockClient, {
-      toolInterceptor: (name, input) => {
-        if (name === 'edit_file') {
-          const { path } = input as { path: string };
-          return `[PLAN MODE] Would edit: ${path} - No changes made.`;
-        }
-        return null;
-      },
-    });
-    
-    await agent.chat('Create a file');
-    
-    // Tool was intercepted, not actually executed
-  });
+### CLI behavior
 
-  test('custom system prompt is used', async () => {
-    const mockCreate = mock<(params: CreateMessageParams) => Promise<MockApiResponse>>(() =>
-      Promise.resolve({
-        content: [{ type: 'text', text: 'Plan response' }],
-        stop_reason: 'end_turn',
-        usage: { input_tokens: 100, output_tokens: 200 },
-      })
-    );
-    
-    const mockClient = { messages: { create: mockCreate } } as unknown as Anthropic;
-    
-    const customPrompt = 'You are a planning assistant.';
-    const agent = new Agent(mockClient, { systemPrompt: customPrompt });
-    
-    await agent.chat('Plan something');
-    
-    const call = mockCreate.mock.calls[0][0];
-    expect(call.system).toBe(customPrompt);
-  });
+- [ ] **Subcommand detection**: `plan` is detected as a first argument
+- [ ] **Prompt parsing**: the user's prompt is captured correctly (excluding flags)
+- [ ] **Optional output**: `--output <file>` writes the plan response to disk
+- [ ] **Exit code**: plan mode exits 0 on success, non-zero on error
 
-  test('read_file tool works normally with interceptor', async () => {
-    const mockCreate = mock<(params: CreateMessageParams) => Promise<MockApiResponse>>(() =>
-      Promise.resolve({
-        content: [
-          { type: 'tool_use', id: 'tool1', name: 'read_file', input: { path: 'test.txt' } }
-        ],
-        stop_reason: 'tool_use',
-        usage: { input_tokens: 100, output_tokens: 200 },
-      })
-    );
-    
-    const mockClient = { messages: { create: mockCreate } } as unknown as Anthropic;
-    
-    const agent = new Agent(mockClient, {
-      toolInterceptor: (name) => {
-        if (name === 'edit_file') return '[BLOCKED]';
-        return null; // Allow other tools
-      },
-    });
-    
-    // read_file should execute normally
-  });
-});
-```
+### Suggested test cases (more specific)
 
-## CLI Tests
+- [ ] **Tools are filtered in plan mode**:
+  - construct `new Agent(mockClient, { mode: 'plan' })`
+  - call `agent.chat("...")`
+  - assert `mockCreate.mock.calls[0][0].tools` does not include `edit_file` or `run_command`
+  - assert `mockCreate.mock.calls[0][0].tools` includes `read_file` and `list_files`
+- [ ] **Custom system prompt is used**:
+  - construct agent with `systemPrompt: 'Custom prompt'`
+  - call `agent.chat("...")`
+  - assert `mockCreate.mock.calls[0][0].system` equals `'Custom prompt'`
+- [ ] **Plan mode system prompt contains expected markers**:
+  - construct plan agent via `createPlanAgent(mockClient)`
+  - call `agent.chat("...")`
+  - assert system prompt contains `PLAN MODE` and `do not edit`
 
-```typescript
-// tests/index.test.ts - Add these tests
-describe('CLI argument parsing', () => {
-  test('plan subcommand detected', () => {
-    const args = ['plan', 'Create a feature'];
-    
-    expect(args[0]).toBe('plan');
-    expect(args.slice(1).join(' ')).toBe('Create a feature');
-  });
+### Test file mapping (exactly where to add things)
 
-  test('--output flag parsed', () => {
-    const args = ['plan', 'prompt', '--output', 'plan.md'];
-    
-    const outputIndex = args.indexOf('--output');
-    expect(outputIndex).toBe(2);
-    expect(args[outputIndex + 1]).toBe('plan.md');
-  });
-
-  test('prompt extracted excluding flags', () => {
-    const args = ['plan', 'Create', 'a', 'feature', '--output', 'plan.md'];
-    const prompt = args.slice(1).filter(a => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--output').join(' ');
-    
-    // Should get "Create a feature" without "--output" or "plan.md"
-  });
-});
-```
-
-## Simple Test Checklist
-
-- [ ] `toolInterceptor` option can block edit_file
-- [ ] `toolInterceptor` returns custom message for blocked tools
-- [ ] `toolInterceptor` returns null to allow tool execution
-- [ ] `systemPrompt` option overrides default system prompt
-- [ ] CLI detects `plan` as first argument
-- [ ] CLI extracts prompt from remaining arguments
-- [ ] CLI parses `--output` flag
+- **Update**: `tests/agent/agent.test.ts`
+  - add test for tool filtering with `mode: 'plan'`
+  - add test for custom `systemPrompt` override
+- **Add**: `tests/agent/plan-agent.test.ts`
+  - test `createPlanAgent()` returns correctly configured agent
+- **Update**: `tests/index.test.ts`
+  - allow additional CLI logic beyond just the render call
 
 ---
 
-# Phase 2: Simple Implementation
+## Phase 2: Implementation (minimal)
 
-Implement this to make the tests pass.
+### Files to add / modify (on `main`)
 
-## Agent Options Extension
+- [ ] **Modify**: `src/agent/types.ts` to include mode and prompt options
+- [ ] **Modify**: `src/agent/agent.ts` to apply mode-specific tool filtering
+- [ ] **Add**: `src/agent/plan-agent.ts` for plan agent factory
+- [ ] **Modify**: `src/index.tsx` to add a `plan` CLI path (keep `render(<App />)` as the normal path)
+- [ ] **Update**: `tests/index.test.ts` to allow the new CLI branching
 
-```typescript
-// src/agent/types.ts - Add to AgentOptions
-export type AgentOptions = {
-  maxRetries?: number;
-  retryDelay?: number;
-  enableParallelTools?: boolean;
-  onToolStart?: (id: string, name: string, input: Record<string, unknown>) => void;
-  onToolComplete?: (id: string, name: string, input: Record<string, unknown>, result: string, error?: boolean) => void;
-  systemPrompt?: string;
-  toolInterceptor?: (name: string, input: unknown) => string | null;
-};
+## Implementation checklist (ordered)
+
+- [ ] **1) Extend Agent options (`src/agent/types.ts`)**
+  - Add `export type AgentMode = 'normal' | 'plan'`
+  - Add to `AgentOptions`:
+    - `mode?: AgentMode`
+    - `systemPrompt?: string`
+    - `toolFilter?: (name: string) => boolean`
+  - Verify TypeScript passes existing tests unchanged
+
+- [ ] **2) Use `systemPrompt` override in `src/agent/agent.ts`**
+  - In constructor, set `this.options.systemPrompt` default to `undefined`
+  - In `makeApiCallWithRetry`, pass `system: this.options.systemPrompt ?? getSystemPrompt()`
+  - Verify with a unit test that the mocked API call receives the custom system prompt
+
+- [ ] **3) Implement tool filtering in `src/agent/agent.ts`**
+  - Add helper: `getFilteredTools(): Tool[]`
+    - if `this.options.toolFilter` exists, filter tools through it
+    - otherwise return all tools
+  - In `makeApiCallWithRetry`, use `tools: this.getFilteredTools()`
+  - Verify with a test that a toolFilter excluding `edit_file` results in API call without it
+
+- [ ] **4) Add `src/agent/plan-agent.ts`**
+  - Create `getPlanSystemPrompt()` that includes:
+    - `PLAN MODE` marker
+    - explicit "do not edit files" instruction
+    - current working directory
+    - instructions to output structured plan (Files/Steps/Testing/Risks)
+  - Create `planToolFilter(name: string): boolean` that returns false for `edit_file` and `run_command`
+  - Export `createPlanAgent(client?: Anthropic): Agent` that constructs agent with:
+    - `mode: 'plan'`
+    - `systemPrompt: getPlanSystemPrompt()`
+    - `toolFilter: planToolFilter`
+  - Verify by instantiating the plan agent in a unit test
+
+- [ ] **5) Add CLI routing in `src/index.tsx`**
+  - Parse `process.argv.slice(2)` to detect `plan` subcommand
+  - If first arg is `plan`:
+    - Extract prompt from remaining args (handle quoted strings)
+    - Extract `--output <file>` if present
+    - Create plan agent via `createPlanAgent()`
+    - Call `agent.chat(prompt)`
+    - Print response to stdout
+    - If `--output` provided, write to file
+    - Exit process
+  - Else, keep the existing `render(<App />...)` path unchanged
+  - Update `tests/index.test.ts` so it still asserts the render call exists but allows additional logic
+
+### Output shape
+
+Plan mode output should include (enforced via system prompt):
+
+- [ ] **Files to touch**: create/modify/delete list (paths + intent)
+- [ ] **Ordered steps**: a sequence of actions, each tied to a file
+- [ ] **Testing**: how to validate the change (commands + key test cases)
+- [ ] **Risks**: edge cases / rollback notes
+
+## Example plan output (short)
+
+This is the level of specificity we want (structured, but not full code):
+
 ```
+Title: Add plan mode
 
-## Agent Class Updates
+Files:
+- src/index.tsx (modify): route "plan" subcommand
+- src/agent/agent.ts (modify): support tool filtering
+- src/agent/plan-agent.ts (add): plan agent factory
 
-```typescript
-// src/agent/agent.ts - Update constructor
-constructor(client?: Anthropic, options?: AgentOptions) {
-  this.client = client ?? new Anthropic();
-  this.options = {
-    maxRetries: options?.maxRetries ?? 3,
-    retryDelay: options?.retryDelay ?? 1000,
-    enableParallelTools: options?.enableParallelTools ?? true,
-    onToolStart: options?.onToolStart ?? (() => {}),
-    onToolComplete: options?.onToolComplete ?? (() => {}),
-    systemPrompt: options?.systemPrompt,
-    toolInterceptor: options?.toolInterceptor,
-  };
-}
+Steps:
+1) Parse CLI args to extract prompt and --output
+2) Create an agent configured for plan mode (filtered tool list)
+3) Print plan text; optionally write to output file
 
-// Update makeApiCallWithRetry to use custom system prompt
-private async makeApiCallWithRetry() {
-  const response = await this.client.messages.create({
-    model: ModelName.CLAUDE_SONNET_4,
-    max_tokens: 8096,
-    system: this.options.systemPrompt ?? getSystemPrompt(),
-    tools: tools,
-    messages: this.conversation,
-  });
-  return response;
-}
+Testing:
+- bun test
+- verify edit_file is not available in plan mode
 
-// Update executeToolWithErrorHandling to check interceptor
-private async executeToolWithErrorHandling(
-  toolUse: Extract<ContentBlock, { type: 'tool_use' }>
-): Promise<{ result: string; error: boolean }> {
-  // Check interceptor first
-  if (this.options.toolInterceptor) {
-    const intercepted = this.options.toolInterceptor(toolUse.name, toolUse.input);
-    if (intercepted !== null) {
-      const toolInput = toolUse.input as Record<string, unknown>;
-      this.options.onToolStart(toolUse.id, toolUse.name, toolInput);
-      this.options.onToolComplete(toolUse.id, toolUse.name, toolInput, intercepted, false);
-      return { result: intercepted, error: false };
-    }
-  }
-  
-  // ... existing implementation
-}
+Risks:
+- CLI arg parsing edge cases with quotes
 ```
-
-## Plan Agent Factory
-
-```typescript
-// src/agent/plan-agent.ts
-import Anthropic from '@anthropic-ai/sdk';
-import { Agent } from './agent';
-import { cwd } from 'node:process';
-
-const PLAN_SYSTEM_PROMPT = `You are a planning assistant analyzing a codebase.
-
-Current working directory: ${cwd()}
-
-YOUR TASK: Create a detailed implementation plan. DO NOT edit any files.
-
-When planning:
-1. Read and analyze relevant files to understand the codebase
-2. Identify what files need to be created or modified
-3. Break down the work into specific, actionable steps
-4. Include code snippets showing exactly what to add/change
-
-OUTPUT FORMAT:
-# Plan: [Title]
-
-## Files to Modify
-- [ ] \`path/to/file.ts\` - description
-
-## Steps
-### Step 1: [Title]
-\`\`\`typescript
-// Code to add/change
-\`\`\`
-`;
-
-export function createPlanAgent(client?: Anthropic): Agent {
-  return new Agent(client, {
-    systemPrompt: PLAN_SYSTEM_PROMPT,
-    toolInterceptor: (name, input) => {
-      if (name === 'edit_file') {
-        const { path } = input as { path: string };
-        return `[PLAN MODE] Would edit: ${path} - No changes made.`;
-      }
-      return null;
-    },
-  });
-}
-```
-
-## CLI Integration
-
-```typescript
-// src/index.tsx - Update entry point
-import { render } from 'ink';
-import { App } from './components/App';
-import { createPlanAgent } from './agent/plan-agent';
-import { writeFileSync } from 'node:fs';
-
-const args = process.argv.slice(2);
-
-if (args[0] === 'plan') {
-  const prompt = args.slice(1).filter(a => !a.startsWith('--')).join(' ');
-  
-  if (!prompt) {
-    console.error('Usage: bun run start plan "your request" [--output file.md]');
-    process.exit(1);
-  }
-  
-  const agent = createPlanAgent();
-  agent.chat(prompt).then(response => {
-    console.log(response.text);
-    
-    const outputIndex = args.indexOf('--output');
-    if (outputIndex !== -1) {
-      const outputPath = args[outputIndex + 1];
-      writeFileSync(outputPath, response.text);
-      console.log(`\nSaved to ${outputPath}`);
-    }
-    
-    process.exit(0);
-  }).catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
-} else {
-  render(<App />, { exitOnCtrlC: true });
-}
-```
-
-## Simple Implementation Checklist
-
-- [ ] Add `systemPrompt` to AgentOptions type
-- [ ] Add `toolInterceptor` to AgentOptions type
-- [ ] Update Agent constructor to store new options
-- [ ] Update `makeApiCallWithRetry` to use `this.options.systemPrompt`
-- [ ] Update `executeToolWithErrorHandling` to check interceptor first
-- [ ] Create `src/agent/plan-agent.ts` with factory function
-- [ ] Create plan-focused system prompt
-- [ ] Implement tool interceptor to block edit_file
-- [ ] Update `src/index.tsx` to handle `plan` subcommand
-- [ ] Parse prompt from args
-- [ ] Handle `--output` flag
 
 ---
 
-# Phase 3: Production Tests
+## Phase 3+: Production hardening (optional)
 
-After simple implementation works, add these tests for production features.
-
-## Additional Test Files
-
-```
-tests/
-  agent/
-    modes.test.ts         # Mode configuration tests
-  plan/
-    parser.test.ts        # Plan parsing tests
-  cli/
-    plan.test.ts          # CLI tests
-```
-
-## Mode Configuration Tests
-
-```typescript
-// tests/agent/modes.test.ts
-import { describe, test, expect } from 'bun:test';
-import { getModeConfig } from '../../src/agent/modes';
-import { ToolName } from '../../src/agent/types';
-
-describe('getModeConfig', () => {
-  test('normal mode includes all tools', () => {
-    const config = getModeConfig('normal', '/test');
-    
-    const toolNames = config.tools.map(t => t.name);
-    expect(toolNames).toContain(ToolName.READ_FILE);
-    expect(toolNames).toContain(ToolName.EDIT_FILE);
-    expect(toolNames).toContain(ToolName.RUN_COMMAND);
-    expect(toolNames).toContain(ToolName.LIST_FILES);
-  });
-
-  test('plan mode excludes edit_file', () => {
-    const config = getModeConfig('plan', '/test');
-    
-    const toolNames = config.tools.map(t => t.name);
-    expect(toolNames).toContain(ToolName.READ_FILE);
-    expect(toolNames).not.toContain(ToolName.EDIT_FILE);
-    expect(toolNames).toContain(ToolName.RUN_COMMAND);
-    expect(toolNames).toContain(ToolName.LIST_FILES);
-  });
-
-  test('plan mode has different system prompt', () => {
-    const normalConfig = getModeConfig('normal', '/test');
-    const planConfig = getModeConfig('plan', '/test');
-    
-    expect(planConfig.systemPrompt).not.toBe(normalConfig.systemPrompt);
-    expect(planConfig.systemPrompt).toContain('PLAN MODE');
-  });
-
-  test('working directory is included in prompts', () => {
-    const config = getModeConfig('plan', '/my/project');
-    
-    expect(config.systemPrompt).toContain('/my/project');
-  });
-});
-```
-
-## Plan Parser Tests
-
-```typescript
-// tests/plan/parser.test.ts
-import { describe, test, expect } from 'bun:test';
-import { parsePlan, validatePlan } from '../../src/plan/parser';
-
-describe('parsePlan', () => {
-  test('extracts plan from code block', () => {
-    const response = `
-Here's my analysis.
-
-\`\`\`plan
-title: Add User Authentication
-summary: Implement JWT-based auth with login/logout endpoints.
-
-files:
-  - path: src/auth/login.ts
-    action: create
-    description: Login endpoint
-
-steps:
-  - title: Create auth module
-    file: src/auth/login.ts
-    description: Add login function
-    code: |
-      export function login() {}
-
-testing:
-  - Test login with valid credentials
-
-risks:
-  - Token expiry handling
-\`\`\`
-
-Let me know if you have questions.
-`;
-    
-    const plan = parsePlan(response);
-    
-    expect(plan).not.toBeNull();
-    expect(plan!.title).toBe('Add User Authentication');
-    expect(plan!.files).toHaveLength(1);
-    expect(plan!.steps).toHaveLength(1);
-    expect(plan!.testing).toHaveLength(1);
-    expect(plan!.risks).toHaveLength(1);
-  });
-
-  test('returns null for no plan block', () => {
-    const response = 'Just a regular response without plan block.';
-    
-    const plan = parsePlan(response);
-    
-    expect(plan).toBeNull();
-  });
-
-  test('handles malformed YAML gracefully', () => {
-    const response = `
-\`\`\`plan
-title: [invalid
-yaml: {{
-\`\`\`
-`;
-    
-    const plan = parsePlan(response);
-    expect(plan).toBeNull();
-  });
-});
-
-describe('validatePlan', () => {
-  test('returns errors for missing fields', () => {
-    const plan = {
-      title: '',
-      summary: '',
-      files: [],
-      steps: [],
-      testing: [],
-      risks: [],
-      raw: '',
-    };
-    
-    const errors = validatePlan(plan);
-    
-    expect(errors).toContain('Missing title');
-    expect(errors).toContain('No files listed');
-    expect(errors).toContain('No steps listed');
-  });
-
-  test('validates step structure', () => {
-    const plan = {
-      title: 'Test',
-      summary: 'Test',
-      files: [{ path: 'a.ts', action: 'create' as const, description: 'test' }],
-      steps: [{ title: '', description: '', file: 'a.ts' }],
-      testing: [],
-      risks: [],
-      raw: '',
-    };
-    
-    const errors = validatePlan(plan);
-    
-    expect(errors).toContain('Step missing title');
-  });
-});
-```
-
-## Agent Mode Tests
-
-```typescript
-// tests/agent/agent.test.ts - Add these tests
-describe('Agent mode support', () => {
-  test('plan mode uses restricted tools', async () => {
-    const mockCreate = mock<(params: CreateMessageParams) => Promise<MockApiResponse>>(() =>
-      Promise.resolve({
-        content: [{ type: 'text', text: 'Here is the plan...' }],
-        stop_reason: 'end_turn',
-        usage: { input_tokens: 100, output_tokens: 200 },
-      })
-    );
-    
-    const mockClient = { messages: { create: mockCreate } } as unknown as Anthropic;
-    const agent = new Agent(mockClient, { mode: 'plan' });
-    
-    await agent.chat('Plan a feature');
-    
-    const call = mockCreate.mock.calls[0][0];
-    const toolNames = call.tools.map((t: { name: string }) => t.name);
-    
-    expect(toolNames).not.toContain('edit_file');
-    expect(toolNames).toContain('read_file');
-  });
-
-  test('plan mode uses plan system prompt', async () => {
-    const mockCreate = mock<(params: CreateMessageParams) => Promise<MockApiResponse>>(() =>
-      Promise.resolve({
-        content: [{ type: 'text', text: 'Plan' }],
-        stop_reason: 'end_turn',
-        usage: { input_tokens: 100, output_tokens: 200 },
-      })
-    );
-    
-    const mockClient = { messages: { create: mockCreate } } as unknown as Anthropic;
-    const agent = new Agent(mockClient, { mode: 'plan' });
-    
-    await agent.chat('Plan');
-    
-    const call = mockCreate.mock.calls[0][0];
-    expect(call.system).toContain('PLAN MODE');
-  });
-});
-```
-
-## Production Test Checklist
-
-- [ ] `getModeConfig('normal')` includes all tools
-- [ ] `getModeConfig('plan')` excludes edit_file
-- [ ] Plan mode has different system prompt
-- [ ] Working directory appears in system prompt
-- [ ] `parsePlan()` extracts plan from code block
-- [ ] `parsePlan()` returns null when no plan block
-- [ ] `parsePlan()` handles malformed YAML
-- [ ] `validatePlan()` catches missing title
-- [ ] `validatePlan()` catches empty files array
-- [ ] `validatePlan()` catches empty steps array
-- [ ] Agent with `mode: 'plan'` uses restricted tools
-- [ ] Agent with `mode: 'plan'` uses plan system prompt
+- [ ] **Structured plan extraction**: enforce a plan block format and parse it for validation
+- [ ] **Plan validation**: validate required fields and warn on missing details
+- [ ] **JSON output**: optionally emit parsed plan JSON for automation via `--format json`
+- [ ] **Interactive plan approval**: show plan, ask for confirmation, then execute in normal mode
 
 ---
 
-# Phase 4: Production Implementation
+## Definition of done
 
-Implement after production tests are written.
+- [ ] In plan mode, the agent cannot make filesystem changes through tools (`edit_file` and `run_command` are filtered out)
+- [ ] The plan output clearly lists files + steps + testing notes (even if brief)
+- [ ] CLI parsing behavior is covered by tests
+- [ ] Normal mode (`bun run start`) continues to work unchanged
 
-## Architecture
+---
 
-```
-src/
-  agent/
-    agent.ts              # Modified to support modes
-    modes/
-      index.ts            # Mode definitions
-      normal.ts           # Normal mode config
-      plan.ts             # Plan mode config
-  plan/
-    parser.ts             # Parse plan output into structured data
-  cli/
-    plan.ts               # CLI handler
-```
+## Step-by-step build recipe
 
-## Dependencies
+### Step 0: Confirm baseline behavior on `main`
 
-```bash
-bun add yaml
-```
+- `src/index.tsx` unconditionally renders the Ink UI
+- `src/agent/agent.ts` always uses `tools` from `src/tools/index.ts` and `getSystemPrompt()` to build API calls
 
-## Type Updates
+### Step 1: Add mode type to `src/agent/types.ts`
 
-```typescript
-// src/agent/types.ts - Add mode type
-export type AgentMode = 'normal' | 'plan';
+- Add `export type AgentMode = 'normal' | 'plan'`
+- Extend `AgentOptions` with `mode?: AgentMode`, `systemPrompt?: string`, `toolFilter?: (name: string) => boolean`
 
-export type AgentOptions = {
-  // ... existing options
-  mode?: AgentMode;
-};
-```
+Acceptance criteria:
+- Existing code compiles with new fields omitted (defaults to normal behavior)
 
-## Mode System
+### Step 2: Make `Agent` use custom system prompt (`src/agent/agent.ts`)
 
-```typescript
-// src/agent/modes/index.ts
-import { Tool } from '../../tools';
-import { tools as allTools } from '../../tools';
-import { ToolName } from '../types';
+Implementation:
+- In constructor, add `systemPrompt: options?.systemPrompt` to options
+- In `makeApiCallWithRetry`, change line 118 to: `system: this.options.systemPrompt ?? getSystemPrompt()`
 
-export type AgentMode = 'normal' | 'plan';
+Acceptance criteria:
+- When `systemPrompt` is provided, the API call uses it
+- When `systemPrompt` is omitted, behavior is unchanged
 
-export interface ModeConfig {
-  systemPrompt: string;
-  tools: Tool[];
-}
+### Step 3: Define tool filtering
 
-const READ_ONLY_TOOLS = [
-  ToolName.READ_FILE,
-  ToolName.LIST_FILES,
-  ToolName.RUN_COMMAND,
-];
+In `src/agent/agent.ts`:
 
-export function getModeConfig(mode: AgentMode, workingDir: string): ModeConfig {
-  switch (mode) {
-    case 'plan':
-      return {
-        systemPrompt: getPlanSystemPrompt(workingDir),
-        tools: allTools.filter(t => READ_ONLY_TOOLS.includes(t.name as ToolName)),
-      };
-    case 'normal':
-    default:
-      return {
-        systemPrompt: getNormalSystemPrompt(workingDir),
-        tools: allTools,
-      };
-  }
-}
+- Add private method `getFilteredTools()`:
+  - `const filter = this.options.toolFilter ?? (() => true)`
+  - `return tools.filter(t => filter(t.name))`
+- In `makeApiCallWithRetry`, change line 119 to: `tools: this.getFilteredTools()`
 
-function getNormalSystemPrompt(workingDir: string): string {
-  return `You are a helpful coding assistant...
-Current working directory: ${workingDir}
-...`;
-}
+Acceptance criteria:
+- When `toolFilter` excludes `edit_file`, the API call's tools array does not contain it
+- When `toolFilter` is omitted, all tools are included
 
-function getPlanSystemPrompt(workingDir: string): string {
-  return `You are a senior software architect creating implementation plans.
+### Step 4: Create plan agent factory (`src/agent/plan-agent.ts`)
 
-IMPORTANT: You are in PLAN MODE. You cannot edit files - the edit_file tool is not available. Your job is to create a detailed, actionable plan.
+- Export `createPlanAgent(client?: Anthropic): Agent`
+- Use filtered tools: `toolFilter: (name) => name !== ToolName.EDIT_FILE && name !== ToolName.RUN_COMMAND`
+- Use plan-specific system prompt with `PLAN MODE` marker
 
-Current working directory: ${workingDir}
+### Step 5: Add CLI routing in `src/index.tsx`
 
-## Your Process
-1. Understand the request thoroughly
-2. Explore the codebase using read_file and list_files
-3. Run read-only commands if needed (git status, grep, etc.)
-4. Create a step-by-step implementation plan
+Desired CLI UX:
+- `bun run start` → starts Ink UI (current behavior)
+- `bun run start plan "do X"` → runs plan mode once, prints output, exits `0`
+- `bun run start plan "do X" --output plan.md` → additionally writes the output to `plan.md`
 
-## Required Output Format
+Implementation notes:
+- Keep the existing `render(<App />, { exitOnCtrlC: true })` codepath intact
+- Add conditional before `render` that checks `process.argv.slice(2)[0] === 'plan'`
+- For plan mode, use async IIFE or top-level await
 
-You MUST structure your response with a plan block:
+### Step 6: Update tests
 
-\`\`\`plan
-title: Brief Title Here
-summary: 2-3 sentence overview
+#### `tests/agent/agent.test.ts`
+- Add test that constructs `new Agent(mockClient, { toolFilter: (n) => n !== 'edit_file' })`
+- Assert `mockCreate.mock.calls[0][0].tools` does not include `edit_file`
+- Add test that sets `systemPrompt` and asserts the API call uses it
 
-files:
-  - path: path/to/file.ts
-    action: create|modify|delete
-    description: What changes to make
+#### `tests/agent/plan-agent.test.ts`
+- Test `createPlanAgent()` returns agent with correct configuration
 
-steps:
-  - title: Step 1 Title
-    file: path/to/file.ts
-    description: What to do
-    code: |
-      // Exact code to add or change
-
-testing:
-  - Description of test case 1
-
-risks:
-  - Potential issue to watch for
-\`\`\`
-`;
-}
-```
-
-## Plan Parser
-
-```typescript
-// src/plan/parser.ts
-import yaml from 'yaml';
-
-export interface PlanFile {
-  path: string;
-  action: 'create' | 'modify' | 'delete';
-  description: string;
-}
-
-export interface PlanStep {
-  title: string;
-  file?: string;
-  description: string;
-  code?: string;
-}
-
-export interface Plan {
-  title: string;
-  summary: string;
-  files: PlanFile[];
-  steps: PlanStep[];
-  testing: string[];
-  risks: string[];
-  raw: string;
-}
-
-export function parsePlan(response: string): Plan | null {
-  const planMatch = response.match(/```plan\n([\s\S]*?)```/);
-  if (!planMatch) return null;
-
-  const planYaml = planMatch[1];
-  
-  try {
-    const parsed = yaml.parse(planYaml);
-    
-    return {
-      title: parsed.title ?? 'Untitled Plan',
-      summary: parsed.summary ?? '',
-      files: (parsed.files ?? []).map((f: Record<string, unknown>) => ({
-        path: f.path as string,
-        action: f.action as 'create' | 'modify' | 'delete',
-        description: f.description as string,
-      })),
-      steps: (parsed.steps ?? []).map((s: Record<string, unknown>) => ({
-        title: s.title as string,
-        file: s.file as string | undefined,
-        description: s.description as string,
-        code: s.code as string | undefined,
-      })),
-      testing: parsed.testing ?? [],
-      risks: parsed.risks ?? [],
-      raw: response,
-    };
-  } catch {
-    return null;
-  }
-}
-
-export function validatePlan(plan: Plan): string[] {
-  const errors: string[] = [];
-  
-  if (!plan.title) errors.push('Missing title');
-  if (!plan.summary) errors.push('Missing summary');
-  if (plan.files.length === 0) errors.push('No files listed');
-  if (plan.steps.length === 0) errors.push('No steps listed');
-  
-  for (const step of plan.steps) {
-    if (!step.title) errors.push('Step missing title');
-    if (!step.description) errors.push('Step missing description');
-  }
-  
-  return errors;
-}
-```
-
-## Agent Updates
-
-```typescript
-// src/agent/agent.ts - Update to use mode system
-import { getModeConfig, AgentMode, ModeConfig } from './modes';
-
-export class Agent {
-  private modeConfig: ModeConfig;
-
-  constructor(client?: Anthropic, options?: AgentOptions) {
-    const mode = options?.mode ?? 'normal';
-    this.modeConfig = getModeConfig(mode, cwd());
-    // ... rest of constructor
-  }
-
-  private async makeApiCallWithRetry() {
-    const response = await this.client.messages.create({
-      model: ModelName.CLAUDE_SONNET_4,
-      max_tokens: 8096,
-      system: this.options.systemPrompt ?? this.modeConfig.systemPrompt,
-      tools: this.modeConfig.tools,
-      messages: this.conversation,
-    });
-    return response;
-  }
-}
-```
-
-## CLI Handler
-
-```typescript
-// src/cli/plan.ts
-import { Agent } from '../agent/agent';
-import { parsePlan, validatePlan } from '../plan/parser';
-import { writeFileSync } from 'node:fs';
-
-interface PlanOptions {
-  outputPath?: string;
-  jsonOutput?: boolean;
-}
-
-export async function runPlanMode(prompt: string, options: PlanOptions): Promise<void> {
-  if (!prompt) {
-    console.error('Usage: bun run start plan "your request" [--output file.md] [--json]');
-    process.exit(1);
-  }
-
-  console.log('Analyzing codebase and creating plan...\n');
-  
-  const agent = new Agent(undefined, { mode: 'plan' });
-  const response = await agent.chat(prompt);
-  
-  const plan = parsePlan(response.text);
-  
-  if (plan) {
-    const errors = validatePlan(plan);
-    if (errors.length > 0) {
-      console.warn('Plan validation warnings:', errors.join(', '));
-    }
-    
-    if (options.jsonOutput) {
-      console.log(JSON.stringify(plan, null, 2));
-    } else {
-      console.log(response.text);
-      console.log('\n---');
-      console.log(`Files to modify: ${plan.files.length}`);
-      console.log(`Steps: ${plan.steps.length}`);
-    }
-  } else {
-    console.warn('Warning: Could not parse structured plan from response');
-    console.log(response.text);
-  }
-
-  if (options.outputPath) {
-    writeFileSync(options.outputPath, response.text);
-    console.log(`\nPlan saved to ${options.outputPath}`);
-  }
-}
-```
-
-## Updated Entry Point
-
-```typescript
-// src/index.tsx
-import { render } from 'ink';
-import { App } from './components/App';
-import { runPlanMode } from './cli/plan';
-
-const args = process.argv.slice(2);
-
-if (args[0] === 'plan') {
-  const prompt = args.slice(1).filter(a => !a.startsWith('--')).join(' ');
-  const outputPath = args.includes('--output') 
-    ? args[args.indexOf('--output') + 1] 
-    : undefined;
-  const jsonOutput = args.includes('--json');
-  
-  runPlanMode(prompt, { outputPath, jsonOutput })
-    .then(() => process.exit(0))
-    .catch(err => {
-      console.error(err);
-      process.exit(1);
-    });
-} else {
-  render(<App />, { exitOnCtrlC: true });
-}
-```
-
-## Production Implementation Checklist
-
-### Mode System
-- [ ] Create `src/agent/modes/` directory
-- [ ] Define `AgentMode` type
-- [ ] Define `ModeConfig` interface
-- [ ] Implement `getModeConfig()` function
-- [ ] Add `mode` option to AgentOptions
-- [ ] Update Agent to use mode config
-- [ ] Filter tools based on mode
-
-### Plan Parser
-- [ ] Create `src/plan/parser.ts`
-- [ ] Define Plan interfaces
-- [ ] Extract plan block from response
-- [ ] Parse YAML content
-- [ ] Map to typed Plan interface
-- [ ] Validate required fields
-
-### CLI
-- [ ] Create `src/cli/plan.ts`
-- [ ] Parse and display structured output
-- [ ] Add `--json` flag for JSON output
-- [ ] Handle validation warnings
-
-### Integration
-- [ ] Update `src/index.tsx` to use `runPlanMode`
-- [ ] Pass parsed options to CLI handler
-
+#### `tests/index.test.ts`
+- Update to allow additional CLI logic beyond just the render call
