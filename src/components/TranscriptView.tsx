@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { MessageRole, ToolCallStatus, ToolName } from '../agent/types';
 import { formatToolCallName, formatToolCallTarget } from './tool-formatting';
@@ -225,10 +226,11 @@ function buildTranscriptLines(params: {
   messages: MessageItem[];
   toolCalls: ToolCallItem[];
   isLoading: boolean;
+  thinkingElapsedSeconds: number | null;
   error: string | null;
   width: number;
 }): Line[] {
-  const { messages, toolCalls, isLoading, error, width } = params;
+  const { messages, toolCalls, isLoading, thinkingElapsedSeconds, error, width } = params;
   const lines: Line[] = [];
 
   for (const msg of messages) {
@@ -246,7 +248,10 @@ function buildTranscriptLines(params: {
   }
 
   if (isLoading && toolCalls.length === 0) {
-    lines.push({ text: 'thinking…', color: 'magenta', dimColor: true });
+    const thinkingText = thinkingElapsedSeconds !== null 
+      ? `Thinking for ${thinkingElapsedSeconds}s`
+      : 'thinking…';
+    lines.push({ text: thinkingText, color: 'magenta', dimColor: true });
     lines.push({ text: '' });
   }
 
@@ -275,6 +280,7 @@ export function TranscriptView(props: {
   afterAssistant?: MessageItem | null;
   toolCalls: ToolCallItem[];
   isLoading: boolean;
+  thinkingStartTime?: number | null;
   error: string | null;
   width: number;
   height: number;
@@ -284,10 +290,32 @@ export function TranscriptView(props: {
   const height = Math.max(1, props.height);
   const scrollOffset = Math.max(0, props.scrollOffset ?? 0);
 
+  const [thinkingElapsedSeconds, setThinkingElapsedSeconds] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!props.isLoading || props.toolCalls.length > 0 || !props.thinkingStartTime) {
+      setThinkingElapsedSeconds(null);
+      return;
+    }
+
+    const updateElapsed = () => {
+      const elapsed = Math.floor((Date.now() - props.thinkingStartTime!) / 1000);
+      setThinkingElapsedSeconds(elapsed);
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 100);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [props.isLoading, props.toolCalls.length, props.thinkingStartTime]);
+
   const allLines = buildTranscriptLines({
     messages: props.messages,
     toolCalls: props.toolCalls,
     isLoading: props.isLoading,
+    thinkingElapsedSeconds,
     error: props.error,
     width,
   });
@@ -297,6 +325,7 @@ export function TranscriptView(props: {
       messages: [props.afterAssistant],
       toolCalls: [],
       isLoading: false,
+      thinkingElapsedSeconds: null,
       error: null,
       width,
     });

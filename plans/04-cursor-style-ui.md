@@ -43,24 +43,24 @@ The simplest high-impact change. Show "Thinking for 3s" instead of just "thinkin
 
 ### Implementation checklist
 
-- [ ] **1) Add `thinkingStartTime` state to App.tsx**
+- [x] **1) Add `thinkingStartTime` state to App.tsx**
   - Set to `Date.now()` when `setLoading(true)`
   - Clear to `null` when `setLoading(false)`
 
-- [ ] **2) Pass timing to TranscriptView**
+- [x] **2) Pass timing to TranscriptView**
   - Add `thinkingStartTime?: number` prop
   - Compute elapsed: `Math.floor((Date.now() - thinkingStartTime) / 1000)`
 
-- [ ] **3) Live-update the thinking display**
+- [x] **3) Live-update the thinking display**
   - Use `useState` + `useEffect` with 100ms interval
   - Show "Thinking for Ns" when loading and no tool calls
   - Clean up interval on unmount
 
 ### Test cases
 
-- [ ] Shows "Thinking" text when loading
-- [ ] Time updates as seconds pass
-- [ ] Timer stops when loading ends
+- [x] Shows "Thinking" text when loading
+- [x] Time updates as seconds pass
+- [x] Timer stops when loading ends
 
 ---
 
@@ -329,9 +329,9 @@ Allow expanding/collapsing verbose tool outputs.
 ## Definition of done
 
 ### Phase 1 (Thinking timer)
-- [ ] Shows "Thinking for Ns" with live updating time
-- [ ] Timer stops when response arrives
-- [ ] Works with and without tool calls
+- [x] Shows "Thinking for Ns" with live updating time
+- [x] Timer stops when response arrives
+- [x] Works with and without tool calls
 
 ### Phase 2 (Streaming)
 - [ ] Text appears incrementally

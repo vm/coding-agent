@@ -283,4 +283,58 @@ describe('TranscriptView', () => {
       expect(lastFrame()).not.toContain('-');
     });
   });
+
+  describe('thinking indicator', () => {
+    it('shows thinking text when loading', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[]}
+          isLoading={true}
+          thinkingStartTime={Date.now()}
+          error={null}
+          width={80}
+          height={24}
+        />
+      );
+
+      expect(lastFrame()).toContain('thinking');
+    });
+
+    it('does not show thinking when tool calls are present', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[{
+            name: ToolName.READ_FILE,
+            input: { path: 'test.ts' },
+            status: ToolCallStatus.RUNNING,
+          }]}
+          isLoading={true}
+          thinkingStartTime={Date.now()}
+          error={null}
+          width={80}
+          height={24}
+        />
+      );
+
+      expect(lastFrame()).not.toContain('Thinking');
+    });
+
+    it('does not show thinking when not loading', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[]}
+          isLoading={false}
+          thinkingStartTime={null}
+          error={null}
+          width={80}
+          height={24}
+        />
+      );
+
+      expect(lastFrame()).not.toContain('Thinking');
+    });
+  });
 });

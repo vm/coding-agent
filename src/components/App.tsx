@@ -44,6 +44,7 @@ export function App() {
   });
   
   const [isLoading, setIsLoading] = useState(false);
+  const [thinkingStartTime, setThinkingStartTime] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [terminalHeight, setTerminalHeight] = useState(stdout.rows || 24);
   const [terminalWidth, setTerminalWidth] = useState(stdout.columns || 80);
@@ -72,6 +73,7 @@ export function App() {
     setMessages(prev => [...prev, { role: MessageRole.USER, content: expanded.userText }]);
     setScrollOffset(0);
     setIsLoading(true);
+    setThinkingStartTime(Date.now());
     setError(null);
     setToolCalls([]);
 
@@ -81,6 +83,7 @@ export function App() {
         setError(expanded.outputText);
       }
       setIsLoading(false);
+      setThinkingStartTime(null);
       return;
     }
 
@@ -93,6 +96,7 @@ export function App() {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
+      setThinkingStartTime(null);
     }
   };
 
@@ -172,6 +176,7 @@ export function App() {
               result: tc.result,
             }))}
             isLoading={isLoading}
+            thinkingStartTime={thinkingStartTime}
             error={error}
             width={contentWidth}
             height={transcriptHeight}
