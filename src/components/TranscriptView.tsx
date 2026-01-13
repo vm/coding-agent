@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { MessageRole, ToolCallStatus, ToolName } from '../agent/types';
-import { formatToolCallName, formatToolCallTarget } from './tool-formatting';
+import { formatToolCallName, formatToolCallTarget, generateUnifiedDiff, getFileName } from './tool-formatting';
 
 type MessageItem = {
   role: MessageRole;
@@ -75,43 +75,12 @@ function formatEditFileDiff(input?: Record<string, unknown>): string | null {
 
   const oldStr = input.old_str as string | undefined;
   const newStr = input.new_str as string | undefined;
+  const path = input.path as string | undefined;
 
   if (oldStr === undefined || newStr === undefined) return null;
 
-  const diffLines: string[] = [];
-
-  if (oldStr === '') {
-    const newLines = newStr.split('\n');
-    const newShow = Math.min(newLines.length, EDIT_FILE_MAX_LINES);
-    for (let i = 0; i < newShow; i++) {
-      diffLines.push(`+ ${newLines[i]}`);
-    }
-    if (newLines.length > EDIT_FILE_MAX_LINES) {
-      diffLines.push(`... (truncated, showing ${EDIT_FILE_MAX_LINES} of ${newLines.length} lines)`);
-    }
-    return diffLines.join('\n');
-  }
-
-  const oldLines = oldStr.split('\n');
-  const newLines = newStr.split('\n');
-  const maxEach = Math.floor(EDIT_FILE_MAX_LINES / 2);
-
-  const oldShow = Math.min(oldLines.length, maxEach);
-  for (let i = 0; i < oldShow; i++) {
-    diffLines.push(`- ${oldLines[i]}`);
-  }
-  if (oldLines.length > maxEach) {
-    diffLines.push(`... (truncated, showing ${maxEach} of ${oldLines.length} removed lines)`);
-  }
-
-  const newShow = Math.min(newLines.length, maxEach);
-  for (let i = 0; i < newShow; i++) {
-    diffLines.push(`+ ${newLines[i]}`);
-  }
-  if (newLines.length > maxEach) {
-    diffLines.push(`... (truncated, showing ${newShow} of ${newLines.length} added lines)`);
-  }
-
+  const filename = path ? getFileName(path) : 'file';
+  const diffLines = generateUnifiedDiff(oldStr, newStr, filename);
   return diffLines.join('\n');
 }
 
@@ -148,7 +117,22 @@ function truncateToolResult(name: string, result: string, input?: Record<string,
 function parseDiffLine(line: string, width: number): Line[] {
   const lines: Line[] = [];
 
-  if (line.startsWith('- ')) {
+  if (line.startsWith('@@')) {
+    const wrapped = wrapLine(line, width);
+    for (const w of wrapped) {
+      lines.push({ text: w, color: 'cyan', dimColor: false });
+    }
+  } else if (line.startsWith('──')) {
+    const wrapped = wrapLine(line, width);
+    for (const w of wrapped) {
+      lines.push({ text: w, color: 'gray', dimColor: true });
+    }
+  } else if (/^─+$/.test(line)) {
+    const wrapped = wrapLine(line, width);
+    for (const w of wrapped) {
+      lines.push({ text: w, color: 'gray', dimColor: true });
+    }
+  } else if (line.startsWith('- ')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
       lines.push({ text: w, color: 'red', dimColor: true });

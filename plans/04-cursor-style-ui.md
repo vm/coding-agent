@@ -158,26 +158,26 @@ Show proper unified diff format for edit operations.
 
 ### Implementation checklist
 
-- [ ] **1) Implement basic unified diff generation**
+- [x] **1) Implement basic unified diff generation**
   - Compare old/new line by line
   - Identify changed regions
   - Add context lines around changes
 
-- [ ] **2) Generate hunk headers**
+- [x] **2) Generate hunk headers**
   - Format: `@@ -startOld,countOld +startNew,countNew @@`
   - Group consecutive changes into hunks
 
-- [ ] **3) Add visual styling**
+- [x] **3) Add visual styling**
   - File header with horizontal rules
   - Line number gutter (optional)
   - Color: red for deletions, green for additions, gray for context
 
 ### Test cases
 
-- [ ] Single line change shows 3 lines context
-- [ ] Multiple changes in one file create separate hunks
-- [ ] New file (empty old) shows all lines as additions
-- [ ] Large diffs are truncated with count
+- [x] Single line change shows 3 lines context
+- [x] Multiple changes in one file create separate hunks
+- [x] New file (empty old) shows all lines as additions
+- [x] Large diffs are truncated with count
 
 ---
 
@@ -339,9 +339,9 @@ Allow expanding/collapsing verbose tool outputs.
 - [ ] No regression in final response quality
 
 ### Phase 3 (Better diffs)
-- [ ] Unified diff format with `@@` headers
-- [ ] Context lines around changes
-- [ ] Proper coloring and borders
+- [x] Unified diff format with `@@` headers
+- [x] Context lines around changes
+- [x] Proper coloring and borders
 
 ### Phase 4 (Code blocks)
 - [ ] File contents in bordered blocks
