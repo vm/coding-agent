@@ -6,6 +6,7 @@ import { Message } from './Message';
 import { ToolCall } from './ToolCall';
 import { Input } from './Input';
 import { MessageRole, ToolCallStatus } from '../agent/types';
+import { splitForToolCalls } from './transcript';
 import { cwd } from 'node:process';
 
 type MessageItem = {
@@ -80,13 +81,6 @@ export function App() {
 
   const workingDir = cwd();
 
-
-  const hasCurrentTurn = isLoading || toolCalls.length > 0;
-  const lastAssistantIdx = hasCurrentTurn 
-    ? messages.map(m => m.role).lastIndexOf(MessageRole.ASSISTANT)
-    : -1;
-
-
   const banner = [
     '███╗   ██╗██╗██╗      █████╗      ██████╗ ██████╗ ██████╗ ███████╗',
     '████╗  ██║██║██║     ██╔══██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝',
@@ -97,6 +91,11 @@ export function App() {
   ];
 
   const gradientColors = ['#ff6b6b', '#feca57', '#48dbfb', '#1dd1a1', '#5f27cd', '#ff9ff3'];
+
+  const { before, afterAssistant } = splitForToolCalls({
+    messages,
+    toolCalls,
+  });
 
   return (
     <Box flexDirection="column" height={terminalHeight}>
@@ -115,14 +114,20 @@ export function App() {
       )}
 
       <Box flexDirection="column" paddingX={2} paddingY={1} flexGrow={1}>
-        {messages.map((msg, idx) => {
-          if (idx === lastAssistantIdx && toolCalls.length > 0) return null;
-          return (
-            <Box key={idx} marginTop={idx > 0 ? 1 : 0}>
-              <Message role={msg.role} content={msg.content} />
-            </Box>
-          );
-        })}
+        {before.map((msg, idx) => (
+          <Box
+            key={idx}
+            marginTop={
+              idx === 0
+                ? 0
+                : before[idx - 1]?.role === MessageRole.USER && msg.role === MessageRole.ASSISTANT
+                  ? 0
+                  : 1
+            }
+          >
+            <Message role={msg.role} content={msg.content} />
+          </Box>
+        ))}
         
         {isLoading && toolCalls.length === 0 && (
           <Box marginTop={messages.length > 0 ? 1 : 0}>
@@ -132,7 +137,16 @@ export function App() {
         )}
 
         {toolCalls.length > 0 && (
-          <Box flexDirection="column" marginTop={messages.length > 0 ? 1 : 0}>
+          <Box
+            flexDirection="column"
+            marginTop={
+              before.length === 0
+                ? 0
+                : before[before.length - 1]?.role === MessageRole.USER
+                  ? 0
+                  : 1
+            }
+          >
             {toolCalls.map(tc => (
               <ToolCall
                 key={tc.id}
@@ -144,10 +158,13 @@ export function App() {
             ))}
           </Box>
         )}
-        
-        {lastAssistantIdx >= 0 && toolCalls.length > 0 && (
+
+        {afterAssistant && (
           <Box marginTop={1}>
-            <Message role={MessageRole.ASSISTANT} content={messages[lastAssistantIdx].content} />
+            <Message
+              role={afterAssistant.role}
+              content={afterAssistant.content}
+            />
           </Box>
         )}
         

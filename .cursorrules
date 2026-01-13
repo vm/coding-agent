@@ -3,7 +3,6 @@
 ## Code Style
 
 - Never write comments in code - code should be self-documenting
-- Use descriptive variable and function names instead of comments
 
 ## Terminal
 
