@@ -1,5 +1,6 @@
 import { Box, Text } from 'ink';
 import { MessageRole, ToolCallStatus, ToolName } from '../agent/types';
+import { formatToolCallName, formatToolCallTarget } from './tool-formatting';
 
 type MessageItem = {
   role: MessageRole;
@@ -18,6 +19,10 @@ type Line = {
   color?: string;
   dimColor?: boolean;
 };
+
+const READ_FILE_MAX_LINES = 50;
+const RUN_COMMAND_MAX_LINES = 100;
+const EDIT_FILE_MAX_LINES = 50;
 
 function splitLines(text: string): string[] {
   return text.split(/\r?\n/);
@@ -64,77 +69,32 @@ function toolStatusColor(status: ToolCallStatus): string {
   }
 }
 
-function getFileName(path: string): string {
-  const parts = path.split('/');
-  return parts[parts.length - 1] || path;
-}
-
-function formatToolCallName(name: string): string {
-  switch (name) {
-    case ToolName.READ_FILE:
-      return 'read file';
-    case ToolName.EDIT_FILE:
-      return 'edit file';
-    case ToolName.LIST_FILES:
-      return 'list files';
-    case ToolName.RUN_COMMAND:
-      return 'run command';
-    default:
-      return name.replace(/_/g, ' ');
-  }
-}
-
-function formatToolCallTarget(name: string, input?: Record<string, unknown>): string | null {
-  const safeInput = input ?? {};
-  const path = safeInput.path ? String(safeInput.path) : null;
-  const command = safeInput.command ? String(safeInput.command) : null;
-
-  if (name === ToolName.RUN_COMMAND && command) {
-    return command.length > 60 ? command.slice(0, 60) + '…' : command;
-  }
-
-  if (path) {
-    if (name === ToolName.LIST_FILES) return path === '.' ? './' : path;
-    return getFileName(path);
-  }
-
-  return null;
-}
-
-function formatToolCallHeader(tc: ToolCallItem): string {
-  const name = formatToolCallName(tc.name);
-  const target = formatToolCallTarget(tc.name, tc.input);
-  const status = toolStatusLabel(tc.status);
-  return target ? `${name}: ${target} (${status})` : `${name} (${status})`;
-}
-
 function formatEditFileDiff(input?: Record<string, unknown>): string | null {
   if (!input) return null;
-  
+
   const oldStr = input.old_str as string | undefined;
   const newStr = input.new_str as string | undefined;
-  
+
   if (oldStr === undefined || newStr === undefined) return null;
-  
-  const maxTotalLines = 50;
+
   const diffLines: string[] = [];
-  
+
   if (oldStr === '') {
     const newLines = newStr.split('\n');
-    const newShow = Math.min(newLines.length, maxTotalLines);
+    const newShow = Math.min(newLines.length, EDIT_FILE_MAX_LINES);
     for (let i = 0; i < newShow; i++) {
       diffLines.push(`+ ${newLines[i]}`);
     }
-    if (newLines.length > maxTotalLines) {
-      diffLines.push(`... (truncated, showing ${maxTotalLines} of ${newLines.length} lines)`);
+    if (newLines.length > EDIT_FILE_MAX_LINES) {
+      diffLines.push(`... (truncated, showing ${EDIT_FILE_MAX_LINES} of ${newLines.length} lines)`);
     }
     return diffLines.join('\n');
   }
-  
+
   const oldLines = oldStr.split('\n');
   const newLines = newStr.split('\n');
-  const maxEach = Math.floor(maxTotalLines / 2);
-  
+  const maxEach = Math.floor(EDIT_FILE_MAX_LINES / 2);
+
   const oldShow = Math.min(oldLines.length, maxEach);
   for (let i = 0; i < oldShow; i++) {
     diffLines.push(`- ${oldLines[i]}`);
@@ -142,7 +102,7 @@ function formatEditFileDiff(input?: Record<string, unknown>): string | null {
   if (oldLines.length > maxEach) {
     diffLines.push(`... (truncated, showing ${maxEach} of ${oldLines.length} removed lines)`);
   }
-  
+
   const newShow = Math.min(newLines.length, maxEach);
   for (let i = 0; i < newShow; i++) {
     diffLines.push(`+ ${newLines[i]}`);
@@ -150,7 +110,7 @@ function formatEditFileDiff(input?: Record<string, unknown>): string | null {
   if (newLines.length > maxEach) {
     diffLines.push(`... (truncated, showing ${newShow} of ${newLines.length} added lines)`);
   }
-  
+
   return diffLines.join('\n');
 }
 
@@ -159,34 +119,34 @@ function truncateToolResult(name: string, result: string, input?: Record<string,
     const diff = formatEditFileDiff(input);
     return diff || result;
   }
-  
+
   const lines = result.split('\n');
   const totalLines = lines.length;
-  
+
   let maxLines: number;
   switch (name) {
     case ToolName.READ_FILE:
-      maxLines = 50;
+      maxLines = READ_FILE_MAX_LINES;
       break;
     case ToolName.RUN_COMMAND:
-      maxLines = 100;
+      maxLines = RUN_COMMAND_MAX_LINES;
       break;
     case ToolName.LIST_FILES:
     default:
       return result;
   }
-  
+
   if (totalLines <= maxLines) {
     return result;
   }
-  
+
   const truncated = lines.slice(0, maxLines).join('\n');
   return `${truncated}\n\n... (truncated, showing ${maxLines} of ${totalLines} lines)`;
 }
 
 function parseDiffLine(line: string, width: number): Line[] {
   const lines: Line[] = [];
-  
+
   if (line.startsWith('- ')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
@@ -213,14 +173,14 @@ function parseDiffLine(line: string, width: number): Line[] {
       lines.push({ text: w, color: 'gray' });
     }
   }
-  
+
   return lines;
 }
 
 function parseToolResultLines(text: string, toolName: string, width: number): Line[] {
   const lines: Line[] = [];
   const logicalLines = splitLines(text);
-  
+
   for (const logicalLine of logicalLines) {
     if (toolName === ToolName.EDIT_FILE) {
       const diffLines = parseDiffLine(logicalLine, width);
@@ -242,7 +202,7 @@ function parseToolResultLines(text: string, toolName: string, width: number): Li
       }
     }
   }
-  
+
   return lines;
 }
 
@@ -251,13 +211,13 @@ function formatToolCallHeaderColored(tc: ToolCallItem): Line {
   const target = formatToolCallTarget(tc.name, tc.input);
   const status = toolStatusLabel(tc.status);
   const statusColor = toolStatusColor(tc.status);
-  
+
   let headerText = name;
   if (target) {
     headerText += `: ${target}`;
   }
   headerText += ` (${status})`;
-  
+
   return { text: headerText, color: statusColor };
 }
 
@@ -362,5 +322,3 @@ export function TranscriptView(props: {
     </Box>
   );
 }
-
-

@@ -1,6 +1,7 @@
 import { Text, Box } from 'ink';
 import Spinner from 'ink-spinner';
 import { ToolCallStatus, ToolName } from '../agent/types';
+import { formatToolCallName, formatToolCallTarget, countLines } from './tool-formatting';
 
 type Props = {
   name: string;
@@ -9,27 +10,12 @@ type Props = {
   result?: string;
 };
 
-function getFileName(path: string): string {
-  const parts = path.split('/');
-  return parts[parts.length - 1] || path;
-}
-
-function countLines(str: string): number {
-  if (!str) return 0;
-  return str.split('\n').length;
-}
-
 export function ToolCall({ name, input, status, result }: Props) {
   const safeInput = input || {};
-  const path = safeInput.path ? String(safeInput.path) : null;
-  const command = safeInput.command ? String(safeInput.command) : null;
   const oldStr = safeInput.old_str as string | undefined;
   const newStr = safeInput.new_str as string | undefined;
   
   const isEdit = name === ToolName.EDIT_FILE;
-  const isRead = name === ToolName.READ_FILE;
-  const isList = name === ToolName.LIST_FILES;
-  const isRun = name === ToolName.RUN_COMMAND;
 
   const getIcon = () => {
     if (status === ToolCallStatus.RUNNING) {
@@ -41,25 +27,6 @@ export function ToolCall({ name, input, status, result }: Props) {
     return <Text color="green">✓</Text>;
   };
 
-  const getToolLabel = () => {
-    if (isRead) return 'read file';
-    if (isEdit) return 'edit file';
-    if (isList) return 'list files';
-    if (isRun) return 'run command';
-    return name.replace(/_/g, ' ');
-  };
-
-  const getTarget = () => {
-    if (path) {
-      if (isList) {
-        return path === '.' ? './' : path;
-      }
-      return getFileName(path);
-    }
-    if (command) return command.length > 40 ? command.slice(0, 40) + '…' : command;
-    return null;
-  };
-
   const getDiffInfo = () => {
     if (!isEdit) return null;
     const added = countLines(newStr || '');
@@ -69,8 +36,8 @@ export function ToolCall({ name, input, status, result }: Props) {
   };
 
   const icon = getIcon();
-  const toolLabel = getToolLabel();
-  const target = getTarget();
+  const toolLabel = formatToolCallName(name);
+  const target = formatToolCallTarget(name, input);
   const diffInfo = getDiffInfo();
 
   return (
