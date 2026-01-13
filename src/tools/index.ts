@@ -6,67 +6,79 @@ import { ToolName } from '../shared/types';
 
 export const tools = [
   {
-    name: ToolName.READ_FILE,
-    description: 'Read the contents of a file',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Path to the file to read',
+    type: 'function' as const,
+    function: {
+      name: ToolName.READ_FILE,
+      description: 'Read the contents of a file',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Path to the file to read',
+          },
         },
+        required: ['path'],
       },
-      required: ['path'],
     },
   },
   {
-    name: ToolName.EDIT_FILE,
-    description: 'Edit a file by replacing a string with another string, or create a new file if old_str is empty',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Path to the file to edit',
+    type: 'function' as const,
+    function: {
+      name: ToolName.EDIT_FILE,
+      description: 'Edit a file by replacing a string with another string, or create a new file if old_str is empty',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Path to the file to edit',
+          },
+          old_str: {
+            type: 'string',
+            description: 'The string to replace. If empty, creates a new file with new_str as content',
+          },
+          new_str: {
+            type: 'string',
+            description: 'The string to replace old_str with',
+          },
         },
-        old_str: {
-          type: 'string',
-          description: 'The string to replace. If empty, creates a new file with new_str as content',
-        },
-        new_str: {
-          type: 'string',
-          description: 'The string to replace old_str with',
-        },
+        required: ['path', 'old_str', 'new_str'],
       },
-      required: ['path', 'old_str', 'new_str'],
     },
   },
   {
-    name: ToolName.RUN_COMMAND,
-    description: 'Run a shell command and return its output',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        command: {
-          type: 'string',
-          description: 'The shell command to run',
+    type: 'function' as const,
+    function: {
+      name: ToolName.RUN_COMMAND,
+      description: 'Run a shell command and return its output',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          command: {
+            type: 'string',
+            description: 'The shell command to run',
+          },
         },
+        required: ['command'],
       },
-      required: ['command'],
     },
   },
   {
-    name: ToolName.LIST_FILES,
-    description: 'List files and directories in a given path',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        path: {
-          type: 'string',
-          description: 'Path to the directory to list',
+    type: 'function' as const,
+    function: {
+      name: ToolName.LIST_FILES,
+      description: 'List files and directories in a given path',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Path to the directory to list',
+          },
         },
+        required: ['path'],
       },
-      required: ['path'],
     },
   },
 ];
