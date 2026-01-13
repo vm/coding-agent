@@ -60,7 +60,7 @@ function createOpenAIClient(): { client: OpenAI; model: string } {
       apiKey: openrouterApiKey,
       defaultHeaders: {
         'HTTP-Referer': process.env.OPENROUTER_SITE_URL || 'https://github.com',
-        'X-Title': process.env.OPENROUTER_APP_NAME || 'Coding Agent',
+        'X-Title': process.env.OPENROUTER_APP_NAME || 'Nila Code',
       },
     });
 

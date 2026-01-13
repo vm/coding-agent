@@ -1,6 +1,15 @@
 <div align="center">
 
-# Coding Agent
+```
+███╗   ██╗██╗██╗      █████╗      ██████╗ ██████╗ ██████╗ ███████╗
+████╗  ██║██║██║     ██╔══██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝
+██╔██╗ ██║██║██║     ███████║    ██║     ██║   ██║██║  ██║█████╗  
+██║╚██╗██║██║██║     ██╔══██║    ██║     ██║   ██║██║  ██║██╔══╝  
+██║ ╚████║██║███████╗██║  ██║    ╚██████╗╚██████╔╝██████╔╝███████╗
+╚═╝  ╚═══╝╚═╝╚══════╝╚═╝  ╚═╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
+```
+
+# Nila Code
 
 **A terminal UI coding assistant with a small, explicit toolset (read/edit/list files + run commands)**
 
@@ -190,7 +199,7 @@ plans/          Design notes / roadmap
 | `OPENROUTER_API_KEY` | Yes | API key from OpenRouter |
 | `OPENROUTER_MODEL` | Yes | Model identifier (e.g., `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`) |
 | `OPENROUTER_SITE_URL` | No | Site URL for OpenRouter headers (default: `https://github.com`) |
-| `OPENROUTER_APP_NAME` | No | App name for OpenRouter headers (default: `Coding Agent`) |
+| `OPENROUTER_APP_NAME` | No | App name for OpenRouter headers (default: `Nila Code`) |
 
 The agent will automatically detect which provider to use based on which API key is set. If both are set, `OPENAI_API_KEY` takes precedence.
 
@@ -220,6 +229,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with TypeScript, Bun, Ink, and the OpenAI SDK**
 
-[Back to Top](#coding-agent)
+[Back to Top](#nila-code)
 
 </div>
