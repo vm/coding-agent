@@ -2,14 +2,36 @@ import { describe, it, expect, mock, beforeEach } from 'bun:test';
 import { Agent } from '../../src/agent/agent';
 import type Anthropic from '@anthropic-ai/sdk';
 
-const mockCreate = mock(() => Promise.resolve({
-  content: [{ type: 'text', text: 'Hello!' }],
-  stop_reason: 'end_turn',
+type MockTextBlock = { type: 'text'; text: string };
+type MockToolUseBlock = { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
+type MockContentBlock = MockTextBlock | MockToolUseBlock;
+
+interface MockApiResponse {
+  content: MockContentBlock[];
+  stop_reason: string;
   usage: {
-    input_tokens: 10,
-    output_tokens: 5,
-  },
-}));
+    input_tokens: number;
+    output_tokens: number;
+  };
+}
+
+interface CreateMessageParams {
+  model: string;
+  max_tokens: number;
+  system: string;
+  tools: unknown[];
+  messages: unknown[];
+}
+
+const createMockResponse = (content: MockContentBlock[], stop_reason: string): MockApiResponse => ({
+  content,
+  stop_reason,
+  usage: { input_tokens: 10, output_tokens: 5 },
+});
+
+const mockCreate = mock<(params: CreateMessageParams) => Promise<MockApiResponse>>(() => 
+  Promise.resolve(createMockResponse([{ type: 'text', text: 'Hello!' }], 'end_turn'))
+);
 
 const mockClient = {
   messages: { create: mockCreate }
@@ -22,14 +44,9 @@ describe('Agent', () => {
 
   describe('Basic text response', () => {
     it('returns text content when no tools are called', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'Hello, how can I help you?' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(
+        createMockResponse([{ type: 'text', text: 'Hello, how can I help you?' }], 'end_turn')
+      );
 
       const agent = new Agent(mockClient);
       const response = await agent.chat('Hello');
@@ -43,28 +60,15 @@ describe('Agent', () => {
 
   describe('Single tool call', () => {
     it('executes tool and returns final text response', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'read_file',
-          input: { path: 'test.txt' }
-        }],
-        stop_reason: 'tool_use',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'tool_use', id: 'tool_1', name: 'read_file', input: { path: 'test.txt' } }],
+        'tool_use'
+      ));
 
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'File contents: Hello World' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 20,
-          output_tokens: 10,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'text', text: 'File contents: Hello World' }],
+        'end_turn'
+      ));
 
       const agent = new Agent(mockClient);
       const response = await agent.chat('Read test.txt');
@@ -78,42 +82,20 @@ describe('Agent', () => {
 
   describe('Multi-tool chain', () => {
     it('executes multiple tools in sequence', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'read_file',
-          input: { path: 'test.txt' }
-        }],
-        stop_reason: 'tool_use',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'tool_use', id: 'tool_1', name: 'read_file', input: { path: 'test.txt' } }],
+        'tool_use'
+      ));
 
-      mockCreate.mockResolvedValueOnce({
-        content: [{
-          type: 'tool_use',
-          id: 'tool_2',
-          name: 'edit_file',
-          input: { path: 'test.txt', old_str: 'old', new_str: 'new' }
-        }],
-        stop_reason: 'tool_use',
-        usage: {
-          input_tokens: 20,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'tool_use', id: 'tool_2', name: 'edit_file', input: { path: 'test.txt', old_str: 'old', new_str: 'new' } }],
+        'tool_use'
+      ));
 
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'File updated successfully' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 30,
-          output_tokens: 10,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'text', text: 'File updated successfully' }],
+        'end_turn'
+      ));
 
       const agent = new Agent(mockClient);
       const response = await agent.chat('Read and update test.txt');
@@ -128,28 +110,15 @@ describe('Agent', () => {
 
   describe('Tool error handling', () => {
     it('handles tool errors gracefully and continues', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'read_file',
-          input: { path: 'nonexistent.txt' }
-        }],
-        stop_reason: 'tool_use',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'tool_use', id: 'tool_1', name: 'read_file', input: { path: 'nonexistent.txt' } }],
+        'tool_use'
+      ));
 
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'I encountered an error reading that file' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 20,
-          output_tokens: 10,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'text', text: 'I encountered an error reading that file' }],
+        'end_turn'
+      ));
 
       const agent = new Agent(mockClient);
       const response = await agent.chat('Read nonexistent.txt');
@@ -163,14 +132,10 @@ describe('Agent', () => {
 
   describe('Conversation history', () => {
     it('maintains conversation history across multiple turns', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: 'Response' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValue(createMockResponse(
+        [{ type: 'text', text: 'Response' }],
+        'end_turn'
+      ));
 
       const agent = new Agent(mockClient);
       
@@ -181,20 +146,18 @@ describe('Agent', () => {
       
       const secondCall = mockCreate.mock.calls[1];
       expect(secondCall).toBeDefined();
-      const messages = secondCall[0]?.messages;
-      expect(messages).toBeDefined();
-      expect(messages?.length).toBeGreaterThanOrEqual(2);
+      if (secondCall) {
+        const params = secondCall[0];
+        expect(params.messages).toBeDefined();
+        expect(params.messages.length).toBeGreaterThanOrEqual(2);
+      }
     });
 
     it('can clear conversation history', async () => {
-      mockCreate.mockResolvedValue({
-        content: [{ type: 'text', text: 'Response' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValue(createMockResponse(
+        [{ type: 'text', text: 'Response' }],
+        'end_turn'
+      ));
 
       const agent = new Agent(mockClient);
       
@@ -211,42 +174,20 @@ describe('Agent', () => {
 
   describe('Sequential tool execution', () => {
     it('executes tools sequentially when parallel is disabled', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'read_file',
-          input: { path: 'test.txt' }
-        }],
-        stop_reason: 'tool_use',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'tool_use', id: 'tool_1', name: 'read_file', input: { path: 'test.txt' } }],
+        'tool_use'
+      ));
 
-      mockCreate.mockResolvedValueOnce({
-        content: [{
-          type: 'tool_use',
-          id: 'tool_2',
-          name: 'read_file',
-          input: { path: 'test2.txt' }
-        }],
-        stop_reason: 'tool_use',
-        usage: {
-          input_tokens: 20,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'tool_use', id: 'tool_2', name: 'read_file', input: { path: 'test2.txt' } }],
+        'tool_use'
+      ));
 
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'Done' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 30,
-          output_tokens: 10,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'text', text: 'Done' }],
+        'end_turn'
+      ));
 
       const agent = new Agent(mockClient, { enableParallelTools: false });
       const response = await agent.chat('Read two files');
@@ -257,28 +198,15 @@ describe('Agent', () => {
     });
 
     it('executes single tool sequentially even when parallel is enabled', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'read_file',
-          input: { path: 'test.txt' }
-        }],
-        stop_reason: 'tool_use',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'tool_use', id: 'tool_1', name: 'read_file', input: { path: 'test.txt' } }],
+        'tool_use'
+      ));
 
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'File read' }],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 20,
-          output_tokens: 10,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'text', text: 'File read' }],
+        'end_turn'
+      ));
 
       const agent = new Agent(mockClient, { enableParallelTools: true });
       const response = await agent.chat('Read test.txt');
@@ -290,14 +218,7 @@ describe('Agent', () => {
 
   describe('Response handling', () => {
     it('handles response with no text blocks (fallback)', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [],
-        stop_reason: 'end_turn',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse([], 'end_turn'));
 
       const agent = new Agent(mockClient);
       const response = await agent.chat('Test');
@@ -320,14 +241,10 @@ describe('Agent', () => {
     });
 
     it('handles max_tokens stop reason', async () => {
-      mockCreate.mockResolvedValueOnce({
-        content: [{ type: 'text', text: 'Partial response' }],
-        stop_reason: 'max_tokens',
-        usage: {
-          input_tokens: 10,
-          output_tokens: 5,
-        },
-      });
+      mockCreate.mockResolvedValueOnce(createMockResponse(
+        [{ type: 'text', text: 'Partial response' }],
+        'max_tokens'
+      ));
 
       const agent = new Agent(mockClient);
       const response = await agent.chat('Test');
@@ -347,4 +264,3 @@ describe('Agent', () => {
     });
   });
 });
-

@@ -1,8 +1,14 @@
 import { describe, it, expect } from 'bun:test';
 
+type MessageRole = 'user' | 'assistant';
+
+function formatMessage(role: MessageRole, content: string): string {
+  return `${role === 'user' ? 'You' : 'Claude'}: ${content}`;
+}
+
 describe('Message', () => {
   it('should accept user role and content', () => {
-    const role: 'user' | 'assistant' = 'user';
+    const role: MessageRole = 'user';
     const content = 'Hello, world!';
     
     expect(role).toBe('user');
@@ -10,7 +16,7 @@ describe('Message', () => {
   });
 
   it('should accept assistant role and content', () => {
-    const role: 'user' | 'assistant' = 'assistant';
+    const role: MessageRole = 'assistant';
     const content = 'Hi there!';
     
     expect(role).toBe('assistant');
@@ -28,19 +34,12 @@ describe('Message', () => {
   });
 
   it('should format user messages correctly', () => {
-    const role = 'user';
-    const content = 'Hello';
-    const formatted = `${role === 'user' ? 'You' : 'Claude'}: ${content}`;
-    
+    const formatted = formatMessage('user', 'Hello');
     expect(formatted).toBe('You: Hello');
   });
 
   it('should format assistant messages correctly', () => {
-    const role = 'assistant';
-    const content = 'Hi there!';
-    const formatted = `${role === 'user' ? 'You' : 'Claude'}: ${content}`;
-    
+    const formatted = formatMessage('assistant', 'Hi there!');
     expect(formatted).toBe('Claude: Hi there!');
   });
 });
-

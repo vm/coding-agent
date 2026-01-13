@@ -9,7 +9,7 @@ export const tools = [
     name: ToolName.READ_FILE,
     description: 'Read the contents of a file',
     input_schema: {
-      type: 'object',
+      type: 'object' as const,
       properties: {
         path: {
           type: 'string',
@@ -23,7 +23,7 @@ export const tools = [
     name: ToolName.EDIT_FILE,
     description: 'Edit a file by replacing a string with another string, or create a new file if old_str is empty',
     input_schema: {
-      type: 'object',
+      type: 'object' as const,
       properties: {
         path: {
           type: 'string',
@@ -45,7 +45,7 @@ export const tools = [
     name: ToolName.RUN_COMMAND,
     description: 'Run a shell command and return its output',
     input_schema: {
-      type: 'object',
+      type: 'object' as const,
       properties: {
         command: {
           type: 'string',
@@ -59,7 +59,7 @@ export const tools = [
     name: ToolName.LIST_FILES,
     description: 'List files and directories in a given path',
     input_schema: {
-      type: 'object',
+      type: 'object' as const,
       properties: {
         path: {
           type: 'string',

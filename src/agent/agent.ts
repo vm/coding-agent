@@ -57,15 +57,17 @@ export class Agent {
     toolUse: Extract<ContentBlock, { type: 'tool_use' }>
   ): Promise<{ result: string; error: boolean }> {
     try {
-      this.options.onToolStart(toolUse.id, toolUse.name, toolUse.input);
+      const toolInput = toolUse.input as Record<string, unknown>;
+      this.options.onToolStart(toolUse.id, toolUse.name, toolInput);
       const result = executeTool(toolUse.name, toolUse.input);
       const isError = result.startsWith('Error:');
-      this.options.onToolComplete(toolUse.id, toolUse.name, toolUse.input, result, isError);
+      this.options.onToolComplete(toolUse.id, toolUse.name, toolInput, result, isError);
       return { result, error: isError };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const result = `Error: Tool execution failed: ${errorMessage}`;
-      this.options.onToolComplete(toolUse.id, toolUse.name, toolUse.input, result, true);
+      const toolInput = toolUse.input as Record<string, unknown>;
+      this.options.onToolComplete(toolUse.id, toolUse.name, toolInput, result, true);
       return { result, error: true };
     }
   }
@@ -85,7 +87,7 @@ export class Agent {
         const { result, error } = results[i];
         toolCalls.push({
           name: toolUse.name,
-          input: toolUse.input,
+          input: toolUse.input as Record<string, unknown>,
           result,
           error,
         });
@@ -95,7 +97,7 @@ export class Agent {
         const { result, error } = await this.executeToolWithErrorHandling(toolUse);
         toolCalls.push({
           name: toolUse.name,
-          input: toolUse.input,
+          input: toolUse.input as Record<string, unknown>,
           result,
           error,
         });

@@ -1,0 +1,64 @@
+# Coding Agent Project Rules
+
+## Code Style
+
+- Never write comments in code - code should be self-documenting
+- Use descriptive variable and function names instead of comments
+
+## Terminal
+
+- Git commands require `required_permissions: ['all']` to run outside the sandbox
+- Package installs (bun add, npm install) require `required_permissions: ['network']`
+
+## TypeScript
+
+- Never use `as any` - always use proper types
+- Use type assertions only when narrowing from `unknown` to a specific type (e.g., `as Record<string, unknown>`)
+- Define explicit types for mock functions: `mock<(params: ParamType) => ReturnType>`
+- Use union types with helper functions to avoid type narrowing issues in tests
+
+## Testing
+
+- Define mock response types at the top of test files
+- Type mock functions with their expected parameter and return types
+- Use factory functions like `createMockResponse()` for consistent test data
+
+## Project Structure
+
+- `src/agent/` - Agent class and type definitions
+- `src/components/` - React/Ink UI components
+- `src/tools/` - Tool implementations (read_file, edit_file, run_command, list_files)
+- `tests/` - Mirror of src structure with `.test.ts` files
+
+## Tools Schema
+
+- Tool input schemas must use `type: 'object' as const` for Anthropic SDK compatibility
+
+## Mock Types for Agent Tests
+
+```typescript
+type MockTextBlock = { type: 'text'; text: string };
+type MockToolUseBlock = { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
+type MockContentBlock = MockTextBlock | MockToolUseBlock;
+
+interface MockApiResponse {
+  content: MockContentBlock[];
+  stop_reason: string;
+  usage: { input_tokens: number; output_tokens: number };
+}
+
+interface CreateMessageParams {
+  model: string;
+  max_tokens: number;
+  system: string;
+  tools: unknown[];
+  messages: unknown[];
+}
+```
+
+## Commands
+
+- `bun run start` - Run the agent
+- `bun test` - Run tests
+- `bun run typecheck` - TypeScript type checking
+
