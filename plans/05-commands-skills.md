@@ -273,12 +273,12 @@ Wire up skill invocation with script execution.
 
 ### Implementation checklist
 
-- [ ] **6.1) Write skill invocation tests**
-- [ ] **6.2) Implement buildSkillContext**
-- [ ] **6.3) Implement formatScriptToolHint**
-- [ ] **6.4) Update App to discover skills**
-- [ ] **6.5) Unify command/skill lookup**
-- [ ] **6.6) Handle skill invocation in App**
+- [x] **6.1) Write skill invocation tests**
+- [x] **6.2) Implement buildSkillContext**
+- [x] **6.3) Implement formatScriptToolHint**
+- [x] **6.4) Update App to discover skills**
+- [x] **6.5) Unify command/skill lookup**
+- [x] **6.6) Handle skill invocation in App**
 
 ---
 
@@ -450,9 +450,9 @@ Phases 1-4 form MVP for commands. Phases 5-6 add skills. Phases 7-9 are progress
 - [x] Scripts detected per skill
 
 ### Phase 6 (Skill Invocation)
-- [ ] Skills invocable like commands
-- [ ] Script hints included in context
-- [ ] Agent can execute scripts
+- [x] Skills invocable like commands
+- [x] Script hints included in context
+- [x] Agent can execute scripts
 
 ### Phase 7 (Registry)
 - [ ] Registry built from commands + skills
