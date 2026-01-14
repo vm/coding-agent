@@ -11,7 +11,10 @@ import { discoverCommands } from '../commands/discovery';
 import { parseInput } from '../commands/parser';
 import { isBuiltinCommand, executeBuiltinHelp } from '../commands/builtins';
 import { formatCommandMessage } from '../commands/invocation';
+import { discoverSkills } from '../skills/discovery';
+import { formatSkillMessage } from '../skills/invocation';
 import type { Command } from '../commands/types';
+import type { Skill } from '../skills/types';
 
 type MessageItem = {
   role: MessageRole;
@@ -33,6 +36,7 @@ export function App() {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [toolCalls, setToolCalls] = useState<ToolCallItem[]>([]);
   const [commands, setCommands] = useState<Command[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
 
   const [agent] = useState(() => {
     return new Agent(undefined, {
@@ -66,6 +70,10 @@ export function App() {
     const commandsPath = join(cwd(), '.nila', 'commands');
     const discovered = discoverCommands(commandsPath);
     setCommands(discovered);
+
+    const skillsPath = join(cwd(), '.nila', 'skills');
+    const discoveredSkills = discoverSkills(skillsPath);
+    setSkills(discoveredSkills);
   }, []);
 
   useEffect(() => {
@@ -86,7 +94,7 @@ export function App() {
       
       if (isBuiltinCommand(name)) {
         if (name === 'help') {
-          const helpText = executeBuiltinHelp(commands);
+          const helpText = executeBuiltinHelp(commands, skills);
           setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
           setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: helpText }]);
           return;
@@ -94,31 +102,55 @@ export function App() {
       }
 
       const command = commands.find(cmd => cmd.name === name);
-      if (!command) {
+      if (command) {
+        const formattedMessage = formatCommandMessage(command, args, text);
         setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
-        setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: `Unknown command: /${name}` }]);
+        setScrollOffset(0);
+        setIsLoading(true);
+        setThinkingStartTime(Date.now());
+        setError(null);
+        setToolCalls([]);
+
+        try {
+          const response = await agent.chat(formattedMessage);
+          setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: response.text }]);
+          if (response.error) setError(response.error);
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          setError(errorMessage);
+        } finally {
+          setIsLoading(false);
+          setThinkingStartTime(null);
+        }
         return;
       }
 
-      const formattedMessage = formatCommandMessage(command, args, text);
-      setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
-      setScrollOffset(0);
-      setIsLoading(true);
-      setThinkingStartTime(Date.now());
-      setError(null);
-      setToolCalls([]);
+      const skill = skills.find(s => s.name === name);
+      if (skill) {
+        const formattedMessage = formatSkillMessage(skill, args, text);
+        setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
+        setScrollOffset(0);
+        setIsLoading(true);
+        setThinkingStartTime(Date.now());
+        setError(null);
+        setToolCalls([]);
 
-      try {
-        const response = await agent.chat(formattedMessage);
-        setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: response.text }]);
-        if (response.error) setError(response.error);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        setError(errorMessage);
-      } finally {
-        setIsLoading(false);
-        setThinkingStartTime(null);
+        try {
+          const response = await agent.chat(formattedMessage);
+          setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: response.text }]);
+          if (response.error) setError(response.error);
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          setError(errorMessage);
+        } finally {
+          setIsLoading(false);
+          setThinkingStartTime(null);
+        }
+        return;
       }
+
+      setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
+      setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: `Unknown command or skill: /${name}` }]);
       return;
     }
 

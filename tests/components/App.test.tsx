@@ -53,7 +53,7 @@ describe('App', () => {
     expect(lastFewFrames).toContain('/commit');
   });
 
-  it('/help shows "No commands available" when no commands discovered', async () => {
+  it('/help shows "No commands or skills available" when no commands discovered', async () => {
     rmSync(commandsDir, { recursive: true, force: true });
 
     const { stdin, lastFrame, stdout } = render(<App />);
@@ -70,7 +70,7 @@ describe('App', () => {
     const frames = stdout.frames;
     const lastFewFrames = frames.slice(-5).join('\n');
     
-    expect(lastFewFrames).toContain('No commands available');
+    expect(lastFewFrames).toContain('No commands or skills available');
   });
 
   it('unknown command shows error message', async () => {
@@ -87,7 +87,7 @@ describe('App', () => {
     const frames = stdout.frames;
     const lastFewFrames = frames.slice(-5).join('\n');
     
-    expect(lastFewFrames).toContain('Unknown command');
+    expect(lastFewFrames).toContain('Unknown command or skill');
     expect(lastFewFrames).toContain('/nonexistent');
   });
 
