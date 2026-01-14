@@ -129,13 +129,13 @@ Hardcode the `/help` command to list available commands.
 
 ### Implementation checklist
 
-- [ ] **3.1) Define BUILTIN_COMMANDS constant**
-- [ ] **3.2) Write builtins tests**
-- [ ] **3.3) Implement isBuiltinCommand**
-- [ ] **3.4) Implement executeBuiltinHelp**
-- [ ] **3.5) Add commands state to App**
-- [ ] **3.6) Call discoverCommands on mount**
-- [ ] **3.7) Handle /help in App submit handler**
+- [x] **3.1) Define BUILTIN_COMMANDS constant**
+- [x] **3.2) Write builtins tests**
+- [x] **3.3) Implement isBuiltinCommand**
+- [x] **3.4) Implement executeBuiltinHelp**
+- [x] **3.5) Add commands state to App**
+- [x] **3.6) Call discoverCommands on mount**
+- [x] **3.7) Handle /help in App submit handler**
 
 ---
 
@@ -435,9 +435,9 @@ Phases 1-4 form MVP for commands. Phases 5-6 add skills. Phases 7-9 are progress
 - [x] Tests pass with mock filesystem
 
 ### Phase 3 (/help)
-- [ ] `/help` lists available commands
-- [ ] Commands state in App
-- [ ] Discovery runs on mount
+- [x] `/help` lists available commands
+- [x] Commands state in App
+- [x] Discovery runs on mount
 
 ### Phase 4 (Command Invocation)
 - [ ] `/command args` parsed correctly
