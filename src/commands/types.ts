@@ -13,3 +13,14 @@ export type CommandInvocation = {
 export type ParsedInput =
   | { type: 'command'; invocation: CommandInvocation }
   | { type: 'message'; text: string };
+
+export type CommandEntry = {
+  name: string;
+  description: string;
+  path: string;
+};
+
+export type ParsedCommand = {
+  command: string;
+  args: string;
+};

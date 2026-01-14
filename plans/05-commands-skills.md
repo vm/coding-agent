@@ -177,13 +177,13 @@ Wire up command invocation: parse input, load command, inject into agent context
 
 ### Implementation checklist
 
-- [ ] **4.1) Write invocation tests**
-- [ ] **4.2) Implement buildCommandContext**
-- [ ] **4.3) Implement formatCommandMessage**
-- [ ] **4.4) Update App handleSubmit to detect commands**
-- [ ] **4.5) Implement command lookup by name**
-- [ ] **4.6) Pass formatted message to agent**
-- [ ] **4.7) Handle unknown command error**
+- [x] **4.1) Write invocation tests**
+- [x] **4.2) Implement buildCommandContext**
+- [x] **4.3) Implement formatCommandMessage**
+- [x] **4.4) Update App handleSubmit to detect commands**
+- [x] **4.5) Implement command lookup by name**
+- [x] **4.6) Pass formatted message to agent**
+- [x] **4.7) Handle unknown command error**
 
 ---
 
@@ -440,9 +440,9 @@ Phases 1-4 form MVP for commands. Phases 5-6 add skills. Phases 7-9 are progress
 - [x] Discovery runs on mount
 
 ### Phase 4 (Command Invocation)
-- [ ] `/command args` parsed correctly
-- [ ] Command content injected to agent
-- [ ] Unknown command shows error
+- [x] `/command args` parsed correctly
+- [x] Command content injected to agent
+- [x] Unknown command shows error
 
 ### Phase 5 (Skills Types)
 - [ ] Skill types defined

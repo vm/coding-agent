@@ -72,5 +72,42 @@ describe('App', () => {
     
     expect(lastFewFrames).toContain('No commands available');
   });
+
+  it('unknown command shows error message', async () => {
+    const { stdin, stdout } = render(<App />);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    stdin.write('/nonexistent');
+    await new Promise(resolve => setTimeout(resolve, 50));
+    stdin.write('\r');
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const frames = stdout.frames;
+    const lastFewFrames = frames.slice(-5).join('\n');
+    
+    expect(lastFewFrames).toContain('Unknown command');
+    expect(lastFewFrames).toContain('/nonexistent');
+  });
+
+  it('command invocation shows in transcript', async () => {
+    writeFileSync(join(commandsDir, 'makepr.md'), '# Make PR\n\nCreate a pull request');
+
+    const { stdin, stdout } = render(<App />);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    stdin.write('/makepr');
+    await new Promise(resolve => setTimeout(resolve, 50));
+    stdin.write('\r');
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    const frames = stdout.frames;
+    const lastFewFrames = frames.slice(-5).join('\n');
+    
+    expect(lastFewFrames).toContain('/makepr');
+  });
 });
 

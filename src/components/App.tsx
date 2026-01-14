@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { discoverCommands } from '../commands/discovery';
 import { parseInput } from '../commands/parser';
 import { isBuiltinCommand, executeBuiltinHelp } from '../commands/builtins';
+import { formatCommandMessage } from '../commands/invocation';
 import type { Command } from '../commands/types';
 
 type MessageItem = {
@@ -81,7 +82,7 @@ export function App() {
     const parsed = parseInput(text);
     
     if (parsed.type === 'command') {
-      const { name } = parsed.invocation;
+      const { name, args } = parsed.invocation;
       
       if (isBuiltinCommand(name)) {
         if (name === 'help') {
@@ -91,6 +92,34 @@ export function App() {
           return;
         }
       }
+
+      const command = commands.find(cmd => cmd.name === name);
+      if (!command) {
+        setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
+        setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: `Unknown command: /${name}` }]);
+        return;
+      }
+
+      const formattedMessage = formatCommandMessage(command, args, text);
+      setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
+      setScrollOffset(0);
+      setIsLoading(true);
+      setThinkingStartTime(Date.now());
+      setError(null);
+      setToolCalls([]);
+
+      try {
+        const response = await agent.chat(formattedMessage);
+        setMessages(prev => [...prev, { role: MessageRole.ASSISTANT, content: response.text }]);
+        if (response.error) setError(response.error);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
+        setThinkingStartTime(null);
+      }
+      return;
     }
 
     setMessages(prev => [...prev, { role: MessageRole.USER, content: text }]);
