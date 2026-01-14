@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
+import { parseCommandLine } from './parser';
 import { CommandEntry, ParsedCommand } from './types';
 
 export function parseCommandInput(input: string): ParsedCommand | null {
@@ -14,17 +15,14 @@ export function parseCommandInput(input: string): ParsedCommand | null {
     return null;
   }
 
-  const firstSpace = withoutSlash.indexOf(' ');
-  if (firstSpace === -1) {
-    return {
-      command: withoutSlash,
-      args: '',
-    };
+  const invocation = parseCommandLine(`/${withoutSlash}`);
+  if (!invocation.name) {
+    return null;
   }
 
   return {
-    command: withoutSlash.slice(0, firstSpace),
-    args: withoutSlash.slice(firstSpace + 1),
+    command: invocation.name,
+    args: invocation.args,
   };
 }
 

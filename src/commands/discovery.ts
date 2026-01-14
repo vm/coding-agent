@@ -1,21 +1,9 @@
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { extractDescription } from '../utils/markdown';
 import type { Command } from './types';
 
-export function extractDescription(content: string): string {
-  const trimmed = content.trim();
-  if (!trimmed) {
-    return '';
-  }
-
-  const headingMatch = trimmed.match(/^#{1,6}\s+(.+)$/m);
-  if (headingMatch) {
-    return headingMatch[1].trim();
-  }
-
-  const firstLine = trimmed.split('\n')[0].trim();
-  return firstLine || '';
-}
+export { extractDescription };
 
 export function loadCommand(filePath: string): Command {
   const content = readFileSync(filePath, 'utf-8');
