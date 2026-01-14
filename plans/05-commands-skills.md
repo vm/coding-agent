@@ -228,12 +228,12 @@ Extend the system to support skills (prompt + script).
 
 ### Implementation checklist
 
-- [ ] **5.1) Define Skill type**
-- [ ] **5.2) Define SkillScript type**
-- [ ] **5.3) Write skill discovery tests**
-- [ ] **5.4) Implement detectScriptLanguage**
-- [ ] **5.5) Implement loadSkill**
-- [ ] **5.6) Implement discoverSkills**
+- [x] **5.1) Define Skill type**
+- [x] **5.2) Define SkillScript type**
+- [x] **5.3) Write skill discovery tests**
+- [x] **5.4) Implement detectScriptLanguage**
+- [x] **5.5) Implement loadSkill**
+- [x] **5.6) Implement discoverSkills**
 
 ---
 
@@ -445,9 +445,9 @@ Phases 1-4 form MVP for commands. Phases 5-6 add skills. Phases 7-9 are progress
 - [x] Unknown command shows error
 
 ### Phase 5 (Skills Types)
-- [ ] Skill types defined
-- [ ] Skills discovered from `.nila/skills/`
-- [ ] Scripts detected per skill
+- [x] Skill types defined
+- [x] Skills discovered from `.nila/skills/`
+- [x] Scripts detected per skill
 
 ### Phase 6 (Skill Invocation)
 - [ ] Skills invocable like commands
