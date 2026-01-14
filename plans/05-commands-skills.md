@@ -156,7 +156,7 @@ Wire up command invocation: parse input, load command, inject into agent context
   - Pass to `agent.chat()` instead of raw input
 
 - **Modify**: `src/components/Input.tsx` (if needed)
-  - No changes expected; parsing happens in App
+  - No changes expected;
 
 ### Tests: `tests/commands/invocation.test.ts`
 
