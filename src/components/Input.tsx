@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useInput } from 'ink';
 import { Text, Box } from 'ink';
 import Spinner from 'ink-spinner';
@@ -36,17 +36,20 @@ export function applyInputEvent(prevValue: string, input: string, key: InputKey)
 
 export function Input({ onSubmit, disabled = false }: Props) {
   const [value, setValue] = useState('');
+  const valueRef = useRef(value);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   useInput((input, key) => {
     if (disabled) return;
 
-    let submitted: string | null = null;
-    setValue(prev => {
-      const result = applyInputEvent(prev, input, key);
-      submitted = result.submitted;
-      return result.nextValue;
-    });
-    if (submitted) onSubmit(submitted);
+    const result = applyInputEvent(valueRef.current, input, key);
+    setValue(result.nextValue);
+    if (result.submitted) {
+      onSubmit(result.submitted);
+    }
   });
 
   if (disabled) {
