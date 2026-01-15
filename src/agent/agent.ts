@@ -114,6 +114,18 @@ export class Agent {
     return this.conversation.length;
   }
 
+  getConversation(): Message[] {
+    return [...this.conversation];
+  }
+
+  restoreConversation(messages: Message[]): void {
+    this.conversation = [...messages];
+  }
+
+  getModel(): string {
+    return this.model;
+  }
+
   private async executeToolWithErrorHandling(
     toolCall: ToolCallMessage
   ): Promise<{ result: string; error: boolean }> {
