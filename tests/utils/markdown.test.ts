@@ -156,4 +156,46 @@ describe('parseMarkdown', () => {
     expect(result.length).toBeGreaterThan(0);
     expect(result[0].content.length).toBe(1000);
   });
+
+  it('parses colored text', () => {
+    const result = parseMarkdown('{color:red}text{/color}');
+    expect(result.length).toBe(1);
+    expect(result[0]).toEqual({ type: FormattedTextPartType.TEXT, content: 'text', color: 'red' });
+  });
+
+  it('parses colored text with different colors', () => {
+    const result = parseMarkdown('{color:green}success{/color}');
+    expect(result[0].color).toBe('green');
+    expect(result[0].content).toBe('success');
+  });
+
+  it('handles unclosed color tag', () => {
+    const result = parseMarkdown('{color:red}text');
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('parses color with nested formatting', () => {
+    const result = parseMarkdown('**bold {color:red}text{/color}**');
+    expect(result.length).toBe(1);
+    expect(result[0].type).toBe(FormattedTextPartType.BOLD);
+    expect(result[0].content).toContain('text');
+  });
+
+  it('handles escaped braces in color content', () => {
+    const result = parseMarkdown('{color:red}\\{text\\}{/color}');
+    expect(result[0].content).toBe('{text}');
+  });
+
+  it('handles invalid color name', () => {
+    const result = parseMarkdown('{color:invalid}text{/color}');
+    expect(result.length).toBe(1);
+    expect(result[0].color).toBeUndefined();
+  });
+
+  it('parses multiple colored sections', () => {
+    const result = parseMarkdown('{color:red}red{/color} {color:blue}blue{/color}');
+    expect(result.length).toBe(3);
+    expect(result[0].color).toBe('red');
+    expect(result[2].color).toBe('blue');
+  });
 });

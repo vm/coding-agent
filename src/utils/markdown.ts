@@ -1,4 +1,5 @@
 import { FormattedTextPart, FormattedTextPartType } from '../shared/types';
+import { resolveColor } from './color-mapping';
 
 export function extractDescription(content: string): string {
   const trimmed = content.trim();
@@ -39,6 +40,12 @@ function parseBold(state: ParseState): FormattedTextPart | null {
         type: FormattedTextPartType.BOLD,
         content: content.trim() || content,
       };
+    }
+
+    const colorPart = parseColor(state);
+    if (colorPart) {
+      nestedParts.push(colorPart);
+      continue;
     }
 
     const italicPart = parseItalic(state);
@@ -134,6 +141,50 @@ function parseCode(state: ParseState): FormattedTextPart | null {
   return null;
 }
 
+function parseColor(state: ParseState): FormattedTextPart | null {
+  if (state.pos >= state.text.length || state.text[state.pos] !== '{') {
+    return null;
+  }
+
+  const colorMatch = state.text.slice(state.pos).match(/^\{color:([^}]+)\}/);
+  if (!colorMatch) {
+    return null;
+  }
+
+  const colorName = colorMatch[1].trim();
+  const openTagLength = colorMatch[0].length;
+  const contentStart = state.pos + openTagLength;
+  let pos = contentStart;
+  let content = '';
+
+  while (pos < state.text.length) {
+    const closeMatch = state.text.slice(pos).match(/^\{(\/color)\}/);
+    if (closeMatch) {
+      state.pos = pos + closeMatch[0].length;
+      const resolvedColor = resolveColor(colorName);
+      return {
+        type: FormattedTextPartType.TEXT,
+        content,
+        color: resolvedColor,
+      };
+    }
+
+    if (state.text[pos] === '\\' && pos + 1 < state.text.length) {
+      const next = state.text[pos + 1];
+      if (next === '{' || next === '}') {
+        content += next;
+        pos += 2;
+        continue;
+      }
+    }
+
+    content += state.text[pos];
+    pos++;
+  }
+
+  return null;
+}
+
 function parseText(state: ParseState): FormattedTextPart {
   let content = '';
 
@@ -141,10 +192,14 @@ function parseText(state: ParseState): FormattedTextPart {
     const char = state.text[state.pos];
     const nextChar = state.pos + 1 < state.text.length ? state.text[state.pos + 1] : null;
 
-    if (char === '\\' && nextChar && (nextChar === '*' || nextChar === '`')) {
+    if (char === '\\' && nextChar && (nextChar === '*' || nextChar === '`' || nextChar === '{' || nextChar === '}')) {
       content += nextChar;
       state.pos += 2;
       continue;
+    }
+
+    if (char === '{') {
+      break;
     }
 
     if (char === '`') {
@@ -181,6 +236,12 @@ export function parseMarkdown(text: string): FormattedTextPart[] {
     const codePart = parseCode(state);
     if (codePart) {
       parts.push(codePart);
+      continue;
+    }
+
+    const colorPart = parseColor(state);
+    if (colorPart) {
+      parts.push(colorPart);
       continue;
     }
 
