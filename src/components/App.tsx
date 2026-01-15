@@ -30,7 +30,7 @@ type AppProps = {
 export function App({ store: injectedStore, agentFactory }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
-  const { theme } = useTheme();
+  const { theme, themeName, setTheme } = useTheme();
   const store = injectedStore ?? getDefaultStore();
   const conversation = useSessionStore((s) => s.conversation, store);
   const { messages, toolCalls } = useMemo(
@@ -130,6 +130,11 @@ export function App({ store: injectedStore, agentFactory }: AppProps) {
   const contentWidth = Math.max(10, terminalWidth - 4);
 
   useInput((input, key) => {
+    if (key.ctrl && input === 't') {
+      setTheme(themeName === 'dark' ? 'light' : 'dark');
+      return;
+    }
+
     if (hasBanner) return;
     const page = Math.max(1, transcriptHeight - 1);
 
