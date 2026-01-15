@@ -7,6 +7,7 @@ import {
   loadSessionData,
   initializeDefaultStore,
 } from './stores/session';
+import { ThemeProvider } from './components/ThemeProvider';
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
@@ -45,4 +46,9 @@ if (wantsResume) {
   initializeDefaultStore({ runId });
 }
 
-render(<App />, { exitOnCtrlC: true });
+render(
+  <ThemeProvider>
+    <App />
+  </ThemeProvider>,
+  { exitOnCtrlC: true }
+);
