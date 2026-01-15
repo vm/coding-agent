@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { Agent } from '../agent/agent';
 import { Input } from './Input';
@@ -6,50 +6,75 @@ import { MessageRole, ToolCallStatus } from '../shared/types';
 import { splitForToolCalls } from '../shared/transcript';
 import { TranscriptView } from './TranscriptView';
 import { cwd } from 'node:process';
+import {
+  MessageItem,
+  SessionData,
+  SessionStore,
+  ToolCallItem,
+  saveSession,
+} from '../session';
 
-type MessageItem = {
-  role: MessageRole;
-  content: string;
+type AppProps = {
+  initialSession?: SessionData | null;
+  runId?: string | null;
+  sessionStore?: SessionStore;
 };
 
-type ToolCallItem = {
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-  status: ToolCallStatus;
-  result?: string;
-  error?: boolean;
-};
-
-export function App() {
+export function App({ initialSession, runId, sessionStore }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
-  const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [toolCalls, setToolCalls] = useState<ToolCallItem[]>([]);
+  const initialMessages = initialSession?.messages ?? [];
+  const initialToolCalls = initialSession?.toolCalls ?? [];
+  const [messages, setMessages] = useState<MessageItem[]>(initialMessages);
+  const [toolCalls, setToolCalls] =
+    useState<ToolCallItem[]>(initialToolCalls);
+  const messagesRef = useRef<MessageItem[]>(initialMessages);
+  const toolCallsRef = useRef<ToolCallItem[]>(initialToolCalls);
+  const createdAtRef = useRef<number>(initialSession?.createdAt ?? Date.now());
+  const activeRunId = runId ?? initialSession?.runId ?? null;
+  const store = sessionStore ?? { save: saveSession };
 
   const [agent] = useState(() => {
-    return new Agent(undefined, {
+    const created = new Agent(undefined, {
       onToolStart: (id, name, input) => {
-        setToolCalls((prev) => [
-          ...prev,
-          { id, name, input, status: ToolCallStatus.RUNNING },
-        ]);
+        setToolCalls((prev) => {
+          const next = [
+            ...prev,
+            { id, name, input, status: ToolCallStatus.RUNNING },
+          ];
+          toolCallsRef.current = next;
+          return next;
+        });
       },
       onToolComplete: (id, _name, _input, result, error) => {
         setToolCalls((prev) =>
-          prev.map((tc) =>
-            tc.id === id
-              ? {
-                  ...tc,
-                  status: error ? ToolCallStatus.ERROR : ToolCallStatus.DONE,
-                  result,
-                  error,
-                }
-              : tc
-          )
+          prev.map((tc) => {
+            if (tc.id !== id) return tc;
+            const nextItem = {
+              ...tc,
+              status: error ? ToolCallStatus.ERROR : ToolCallStatus.DONE,
+              result,
+              error,
+            };
+            return nextItem;
+          })
+        );
+        toolCallsRef.current = toolCallsRef.current.map((tc) =>
+          tc.id === id
+            ? {
+                ...tc,
+                status: error ? ToolCallStatus.ERROR : ToolCallStatus.DONE,
+                result,
+                error,
+              }
+            : tc
         );
       },
     });
+    if (initialSession?.conversation) {
+      created.restoreConversation(initialSession.conversation);
+    }
+    return created;
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -82,21 +107,58 @@ export function App() {
     };
   }, [stdout]);
 
+  const buildSessionData = useCallback(
+    (nextMessages: MessageItem[], nextToolCalls: ToolCallItem[]): SessionData => {
+      return {
+        runId: activeRunId ?? '',
+        createdAt: createdAtRef.current,
+        workingDir: cwd(),
+        model: agent.getModel(),
+        conversation: agent.getConversation(),
+        messages: nextMessages,
+        toolCalls: nextToolCalls,
+      };
+    },
+    [activeRunId, agent]
+  );
+
+  const persistSession = useCallback(
+    (nextMessages: MessageItem[], nextToolCalls: ToolCallItem[]) => {
+      if (!activeRunId) return;
+      const sessionData = buildSessionData(nextMessages, nextToolCalls);
+      store.save(activeRunId, sessionData);
+    },
+    [activeRunId, buildSessionData, store]
+  );
+
   const handleSubmit = async (text: string) => {
-    setMessages((prev) => [...prev, { role: MessageRole.USER, content: text }]);
+    setMessages((prev) => {
+      const next = [...prev, { role: MessageRole.USER, content: text }];
+      messagesRef.current = next;
+      return next;
+    });
     setScrollOffset(0);
     setIsLoading(true);
     setThinkingStartTime(Date.now());
     setError(null);
-    setToolCalls([]);
+    setToolCalls(() => {
+      toolCallsRef.current = [];
+      return [];
+    });
 
     try {
       const response = await agent.chat(text);
-      setMessages((prev) => [
-        ...prev,
-        { role: MessageRole.ASSISTANT, content: response.text },
-      ]);
+      let nextMessages: MessageItem[] = [];
+      setMessages((prev) => {
+        nextMessages = [
+          ...prev,
+          { role: MessageRole.ASSISTANT, content: response.text },
+        ];
+        messagesRef.current = nextMessages;
+        return nextMessages;
+      });
       if (response.error) setError(response.error);
+      persistSession(nextMessages, toolCallsRef.current);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -163,6 +225,12 @@ export function App() {
       return;
     }
   });
+
+  useEffect(() => {
+    return () => {
+      persistSession(messagesRef.current, toolCallsRef.current);
+    };
+  }, [persistSession]);
 
   return (
     <Box flexDirection="column" height={terminalHeight}>
