@@ -20,6 +20,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -35,6 +36,7 @@ describe('TranscriptView', () => {
         error={null}
         width={6}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -52,6 +54,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -69,6 +72,7 @@ describe('TranscriptView', () => {
         error={'Something went wrong'}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -85,6 +89,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -108,6 +113,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -131,6 +137,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -154,6 +161,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -179,6 +187,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -200,6 +209,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -221,6 +231,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={true}
       />
     );
 
@@ -248,6 +259,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -276,6 +288,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -303,6 +316,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -331,6 +345,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -354,6 +369,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -386,6 +402,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={200}
+          collapsed={false}
         />
       );
 
@@ -413,6 +430,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -439,6 +457,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={true}
         />
       );
 
@@ -456,6 +475,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={true}
         />
       );
 
@@ -479,6 +499,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={true}
         />
       );
 
@@ -495,6 +516,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={true}
         />
       );
 
@@ -519,6 +541,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -545,6 +568,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -572,6 +596,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -596,6 +621,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -623,6 +649,7 @@ describe('TranscriptView', () => {
           error={null}
           width={80}
           height={24}
+          collapsed={false}
         />
       );
 
@@ -648,6 +675,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={24}
+        collapsed={false}
       />
     );
 
@@ -670,6 +698,7 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={40}
+        collapsed={false}
       />
     );
 
@@ -696,9 +725,311 @@ describe('TranscriptView', () => {
         error={null}
         width={80}
         height={40}
+        collapsed={false}
       />
     );
 
     expect(lastFrame()).toContain('  same');
+  });
+
+  describe('collapsed state', () => {
+    it('shows collapse indicator when collapsed', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.DONE,
+              result: 'file content',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶');
+      expect(lastFrame()).not.toContain('▼');
+    });
+
+    it('shows expand indicator when expanded', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.DONE,
+              result: 'file content',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={false}
+        />
+      );
+
+      expect(lastFrame()).toContain('▼');
+      expect(lastFrame()).not.toContain('▶');
+    });
+
+    it('hides result content when collapsed', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.DONE,
+              result: 'file content here',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('read file: test.ts (done)');
+      expect(output).not.toContain('file content here');
+    });
+
+    it('shows result content when expanded', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.DONE,
+              result: 'file content here',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={false}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('read file: test.ts (done)');
+      expect(output).toContain('file content here');
+    });
+
+    it('applies collapsed state to all tool calls', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'file1.ts' },
+              status: ToolCallStatus.DONE,
+              result: 'content 1',
+            },
+            {
+              name: ToolName.EDIT_FILE,
+              input: { path: 'file2.ts', old_str: 'old', new_str: 'new' },
+              status: ToolCallStatus.DONE,
+              result: 'Updated',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('▶ read file: file1.ts (done)');
+      expect(output).toContain('▶ edit file: file2.ts (done)');
+      expect(output).not.toContain('content 1');
+      expect(output).not.toContain('- old');
+      expect(output).not.toContain('+ new');
+    });
+
+    it('works with read_file tool type', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.DONE,
+              result: 'content',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶ read file: test.ts (done)');
+      expect(lastFrame()).not.toContain('content');
+    });
+
+    it('works with edit_file tool type', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.EDIT_FILE,
+              input: { path: 'test.ts', old_str: 'old', new_str: 'new' },
+              status: ToolCallStatus.DONE,
+              result: 'Updated',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶ edit file: test.ts (done)');
+      expect(lastFrame()).not.toContain('- old');
+      expect(lastFrame()).not.toContain('+ new');
+    });
+
+    it('works with run_command tool type', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.RUN_COMMAND,
+              input: { command: 'bun test' },
+              status: ToolCallStatus.DONE,
+              result: 'test output',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶ run command: bun test (done)');
+      expect(lastFrame()).not.toContain('test output');
+    });
+
+    it('works with list_files tool type', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.LIST_FILES,
+              input: { path: '.' },
+              status: ToolCallStatus.DONE,
+              result: 'file1.ts\nfile2.ts',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶ list files: ./ (done)');
+      expect(lastFrame()).not.toContain('file1.ts');
+      expect(lastFrame()).not.toContain('file2.ts');
+    });
+
+    it('works with running status', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.RUNNING,
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶ read file: test.ts (running)');
+    });
+
+    it('works with done status', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.DONE,
+              result: 'content',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶ read file: test.ts (done)');
+    });
+
+    it('works with error status', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[]}
+          toolCalls={[
+            {
+              name: ToolName.READ_FILE,
+              input: { path: 'test.ts' },
+              status: ToolCallStatus.ERROR,
+              result: 'Error message',
+            },
+          ]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      expect(lastFrame()).toContain('▶ read file: test.ts (error)');
+      expect(lastFrame()).not.toContain('Error message');
+    });
   });
 });
