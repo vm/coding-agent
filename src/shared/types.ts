@@ -27,3 +27,5 @@ export type TranscriptLine = {
   color?: string;
   dimColor?: boolean;
 };
+
+export type { ThemeName } from './themes';
