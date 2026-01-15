@@ -8,6 +8,8 @@ import {
 import { TranscriptLines } from './TranscriptLines';
 import type { TranscriptLine } from '../shared/types';
 import { useThinkingElapsedSeconds } from '../hooks/useThinkingElapsedSeconds';
+import { useTheme } from './ThemeProvider';
+import type { Theme } from '../shared/themes';
 
 type MessageItem = {
   role: MessageRole;
@@ -59,14 +61,14 @@ function toolStatusLabel(status: ToolCallStatus): string {
   }
 }
 
-function toolStatusColor(status: ToolCallStatus): string {
+function toolStatusColor(status: ToolCallStatus, theme: Theme): string {
   switch (status) {
     case ToolCallStatus.RUNNING:
-      return 'yellow';
+      return theme.toolStatus.running;
     case ToolCallStatus.DONE:
-      return 'green';
+      return theme.toolStatus.done;
     case ToolCallStatus.ERROR:
-      return 'red';
+      return theme.toolStatus.error;
   }
 }
 
@@ -118,48 +120,48 @@ function truncateToolResult(
   return `${truncated}\n\n... (truncated, showing ${maxLines} of ${totalLines} lines)`;
 }
 
-function parseDiffLine(line: string, width: number): TranscriptLine[] {
+function parseDiffLine(line: string, width: number, theme: Theme): TranscriptLine[] {
   const lines: TranscriptLine[] = [];
 
   if (line.startsWith('@@')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'cyan', dimColor: false });
+      lines.push({ text: w, color: theme.diff.hunkHeader, dimColor: false });
     }
   } else if (/^─+$/.test(line)) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'gray', dimColor: true });
+      lines.push({ text: w, color: theme.diff.separator, dimColor: true });
     }
   } else if (line.startsWith('──')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'gray', dimColor: true });
+      lines.push({ text: w, color: theme.diff.separator, dimColor: true });
     }
   } else if (line.startsWith('- ')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'red', dimColor: true });
+      lines.push({ text: w, color: theme.diff.deletion, dimColor: true });
     }
   } else if (line.startsWith('+ ')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'green' });
+      lines.push({ text: w, color: theme.diff.addition });
     }
   } else if (line.startsWith('  ')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'gray', dimColor: true });
+      lines.push({ text: w, color: theme.diff.context, dimColor: true });
     }
   } else if (line.includes('truncated')) {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'yellow', dimColor: true });
+      lines.push({ text: w, color: theme.diff.truncated, dimColor: true });
     }
   } else {
     const wrapped = wrapLine(line, width);
     for (const w of wrapped) {
-      lines.push({ text: w, color: 'gray' });
+      lines.push({ text: w, color: theme.diff.context });
     }
   }
 
@@ -171,14 +173,15 @@ function renderCodeBlock(
   content: string,
   width: number,
   contentColor: string,
-  dimColor: boolean
+  dimColor: boolean,
+  theme: Theme
 ): TranscriptLine[] {
   const lines: TranscriptLine[] = [];
   const headerWidth = Math.min(60, width);
   const titlePart = `── ${title} `;
   const remainingWidth = Math.max(0, headerWidth - titlePart.length);
   const headerLine = titlePart + '─'.repeat(remainingWidth);
-  lines.push({ text: headerLine, color: 'gray', dimColor: true });
+  lines.push({ text: headerLine, color: theme.codeBlock.border, dimColor: true });
 
   const contentLines = splitLines(content);
   const borderWidth = Math.min(width, headerWidth);
@@ -187,7 +190,7 @@ function renderCodeBlock(
     contentLines.length === 0 ||
     (contentLines.length === 1 && contentLines[0] === '')
   ) {
-    lines.push({ text: '│', color: 'gray', dimColor: true });
+    lines.push({ text: '│', color: theme.codeBlock.border, dimColor: true });
   } else {
     for (const logicalLine of contentLines) {
       const wrapped = wrapLine(logicalLine, borderWidth - 2);
@@ -199,7 +202,7 @@ function renderCodeBlock(
   }
 
   const footerLine = '─'.repeat(borderWidth);
-  lines.push({ text: footerLine, color: 'gray', dimColor: true });
+  lines.push({ text: footerLine, color: theme.codeBlock.border, dimColor: true });
 
   return lines;
 }
@@ -208,21 +211,22 @@ function parseToolResultLines(
   text: string,
   toolName: string,
   width: number,
-  input?: Record<string, unknown>
+  input: Record<string, unknown> | undefined,
+  theme: Theme
 ): TranscriptLine[] {
   const lines: TranscriptLine[] = [];
   const logicalLines = splitLines(text);
 
   if (toolName === ToolName.EDIT_FILE) {
     for (const logicalLine of logicalLines) {
-      const diffLines = parseDiffLine(logicalLine, width);
+      const diffLines = parseDiffLine(logicalLine, width, theme);
       lines.push(...diffLines);
     }
   } else if (toolName === ToolName.READ_FILE) {
     const path = input?.path as string | undefined;
     const filename = path ? getFileName(path) : 'file';
     const title = `read file: ${filename}`;
-    return renderCodeBlock(title, text, width, 'cyan', true);
+    return renderCodeBlock(title, text, width, theme.codeBlock.content, true, theme);
   } else if (toolName === ToolName.RUN_COMMAND) {
     const command = input?.command as string | undefined;
     const commandText = command || 'command';
@@ -235,7 +239,7 @@ function parseToolResultLines(
     const remainingWidth = Math.max(0, headerWidth - titlePart.length);
     const headerLine = titlePart + '─'.repeat(remainingWidth);
     const lines: TranscriptLine[] = [];
-    lines.push({ text: headerLine, color: 'gray', dimColor: true });
+    lines.push({ text: headerLine, color: theme.codeBlock.border, dimColor: true });
 
     const borderWidth = Math.min(width, headerWidth);
     const commandPrefix = '│ $ ';
@@ -244,7 +248,7 @@ function parseToolResultLines(
     for (const w of wrappedCommand) {
       lines.push({
         text: `${commandPrefix}${w}`,
-        color: 'blueBright',
+        color: theme.codeBlock.commandPrefix,
         dimColor: false,
       });
     }
@@ -254,26 +258,26 @@ function parseToolResultLines(
       contentLines.length === 0 ||
       (contentLines.length === 1 && contentLines[0] === '')
     ) {
-      lines.push({ text: '│', color: 'gray', dimColor: true });
+      lines.push({ text: '│', color: theme.codeBlock.border, dimColor: true });
     } else {
       for (const logicalLine of contentLines) {
         const wrapped = wrapLine(logicalLine, borderWidth - 2);
         for (const w of wrapped) {
           const borderedLine = `│ ${w}`;
-          lines.push({ text: borderedLine, color: 'white', dimColor: false });
+          lines.push({ text: borderedLine, color: theme.text.primary, dimColor: false });
         }
       }
     }
 
     const footerLine = '─'.repeat(borderWidth);
-    lines.push({ text: footerLine, color: 'gray', dimColor: true });
+    lines.push({ text: footerLine, color: theme.codeBlock.border, dimColor: true });
 
     return lines;
   } else {
     for (const logicalLine of logicalLines) {
       const wrapped = wrapLine(logicalLine, width);
       for (const w of wrapped) {
-        lines.push({ text: w, color: 'gray', dimColor: true });
+        lines.push({ text: w, color: theme.text.secondary, dimColor: true });
       }
     }
   }
@@ -283,12 +287,13 @@ function parseToolResultLines(
 
 function formatToolCallHeaderColored(
   tc: ToolCallItem,
-  collapsed: boolean
+  collapsed: boolean,
+  theme: Theme
 ): TranscriptLine {
   const name = formatToolCallName(tc.name);
   const target = formatToolCallTarget(tc.name, tc.input);
   const status = toolStatusLabel(tc.status);
-  const statusColor = toolStatusColor(tc.status);
+  const statusColor = toolStatusColor(tc.status, theme);
 
   const indicator = collapsed ? '▶' : '▼';
   let headerText = `${indicator} ${name}`;
@@ -308,6 +313,7 @@ function buildTranscriptLines(params: {
   error: string | null;
   width: number;
   collapsed: boolean;
+  theme: Theme;
 }): TranscriptLine[] {
   const {
     messages,
@@ -317,6 +323,7 @@ function buildTranscriptLines(params: {
     error,
     width,
     collapsed,
+    theme,
   } = params;
   const lines: TranscriptLine[] = [];
 
@@ -325,13 +332,13 @@ function buildTranscriptLines(params: {
       const prefix = 'you ';
       const wrapped = wrapText(prefix + msg.content, width);
       for (const w of wrapped)
-        lines.push({ text: w, color: 'yellow', dimColor: false });
+        lines.push({ text: w, color: theme.userMessage, dimColor: false });
       lines.push({ text: '' });
       continue;
     }
 
     const wrapped = wrapText(msg.content, width);
-    for (const w of wrapped) lines.push({ text: w, color: 'white' });
+    for (const w of wrapped) lines.push({ text: w, color: theme.assistantMessage });
     lines.push({ text: '' });
   }
 
@@ -340,12 +347,12 @@ function buildTranscriptLines(params: {
       thinkingElapsedSeconds !== null
         ? `Thinking for ${thinkingElapsedSeconds}s`
         : 'thinking…';
-    lines.push({ text: thinkingText, color: 'magenta', dimColor: true });
+    lines.push({ text: thinkingText, color: theme.thinking, dimColor: true });
     lines.push({ text: '' });
   }
 
   for (const tc of toolCalls) {
-    const header = formatToolCallHeaderColored(tc, collapsed);
+    const header = formatToolCallHeaderColored(tc, collapsed, theme);
     lines.push(header);
     if (!collapsed && tc.result !== undefined && tc.result !== null) {
       const truncated = truncateToolResult(tc.name, tc.result, tc.input);
@@ -353,7 +360,8 @@ function buildTranscriptLines(params: {
         truncated,
         tc.name,
         width,
-        tc.input
+        tc.input,
+        theme
       );
       lines.push(...resultLines);
     }
@@ -363,7 +371,7 @@ function buildTranscriptLines(params: {
   if (error) {
     const wrapped = wrapText(`error: ${error}`, width);
     for (const w of wrapped)
-      lines.push({ text: w, color: 'red', dimColor: false });
+      lines.push({ text: w, color: theme.error, dimColor: false });
     lines.push({ text: '' });
   }
 
@@ -382,6 +390,7 @@ export function TranscriptView(props: {
   scrollOffset?: number;
   collapsed: boolean;
 }) {
+  const { theme } = useTheme();
   const width = Math.max(1, props.width);
   const height = Math.max(1, props.height);
   const thinkingElapsedSeconds = useThinkingElapsedSeconds({
@@ -398,6 +407,7 @@ export function TranscriptView(props: {
     error: props.error,
     width,
     collapsed: props.collapsed,
+    theme,
   });
 
   if (props.afterAssistant) {
@@ -409,6 +419,7 @@ export function TranscriptView(props: {
       error: null,
       width,
       collapsed: props.collapsed,
+      theme,
     });
     allLines.push(...assistantLines);
   }

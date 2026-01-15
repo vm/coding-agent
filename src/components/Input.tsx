@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useInput } from 'ink';
 import { Text, Box } from 'ink';
 import Spinner from 'ink-spinner';
+import { useTheme } from './ThemeProvider';
 
 type Props = {
   onSubmit: (text: string) => void;
@@ -39,6 +40,7 @@ export function applyInputEvent(
 }
 
 export function Input({ onSubmit, disabled = false }: Props) {
+  const { theme } = useTheme();
   const [value, setValue] = useState('');
   const valueRef = useRef(value);
 
@@ -59,7 +61,7 @@ export function Input({ onSubmit, disabled = false }: Props) {
   if (disabled) {
     return (
       <Box>
-        <Text color="yellow">
+        <Text color={theme.toolStatus.running}>
           <Spinner type="dots" />
         </Text>
       </Box>
@@ -68,18 +70,18 @@ export function Input({ onSubmit, disabled = false }: Props) {
 
   return (
     <Box>
-      <Text color="cyan" bold>
+      <Text color={theme.input.prompt} bold>
         ›
       </Text>
       <Text> </Text>
       {value.length > 0 ? (
-        <Text color="white">{value}</Text>
+        <Text color={theme.input.text}>{value}</Text>
       ) : (
-        <Text color="gray" dimColor>
+        <Text color={theme.input.placeholder} dimColor>
           ask anything...
         </Text>
       )}
-      <Text color="cyan">▎</Text>
+      <Text color={theme.input.cursor}>▎</Text>
     </Box>
   );
 }

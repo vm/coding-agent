@@ -11,7 +11,9 @@ describe('index', () => {
 
     expect(content).toContain("import { render } from 'ink'");
     expect(content).toContain("import { App } from './components/App'");
-    expect(content).toContain('render(<App');
+    expect(content).toContain("import { ThemeProvider } from './components/ThemeProvider'");
+    expect(content).toContain('<ThemeProvider>');
+    expect(content).toContain('<App />');
     expect(content).toContain('exitOnCtrlC: true');
   });
 });

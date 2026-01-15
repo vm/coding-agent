@@ -4,6 +4,7 @@ import { Agent } from '../agent/agent';
 import { Input } from './Input';
 import { splitForToolCalls, deriveTranscript } from '../shared/transcript';
 import { TranscriptView } from './TranscriptView';
+import { useTheme } from './ThemeProvider';
 import { cwd } from 'node:process';
 import {
   useSessionStore,
@@ -29,7 +30,7 @@ type AppProps = {
 export function App({ store: injectedStore, agentFactory }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
-
+  const { theme } = useTheme();
   const store = injectedStore ?? getDefaultStore();
   const conversation = useSessionStore((s) => s.conversation, store);
   const { messages, toolCalls } = useMemo(
@@ -118,15 +119,6 @@ export function App({ store: injectedStore, agentFactory }: AppProps) {
     '╚═╝  ╚═══╝╚═╝╚══════╝╚═╝  ╚═╝     ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝',
   ];
 
-  const gradientColors = [
-    '#ff6b6b',
-    '#feca57',
-    '#48dbfb',
-    '#1dd1a1',
-    '#5f27cd',
-    '#ff9ff3',
-  ];
-
   const { before, afterAssistant } = splitForToolCalls({
     messages,
     toolCalls,
@@ -178,14 +170,14 @@ export function App({ store: injectedStore, agentFactory }: AppProps) {
         >
           <Box flexDirection="column">
             {banner.map((line, i) => (
-              <Text key={i} color={gradientColors[i]}>
+              <Text key={i} color={theme.banner[i]}>
                 {line}
               </Text>
             ))}
           </Box>
 
           <Box marginTop={2}>
-            <Text color="gray" dimColor>
+            <Text color={theme.text.secondary} dimColor>
               {cwd()}
             </Text>
           </Box>

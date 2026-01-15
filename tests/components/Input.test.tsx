@@ -1,23 +1,24 @@
 import { describe, it, expect, mock } from 'bun:test';
 import { render } from 'ink-testing-library';
 import { Input, applyInputEvent } from '../../src/components/Input';
+import { renderWithTheme } from '../utils/theme-test-utils';
 
 describe('Input', () => {
   describe('enabled state', () => {
     it('shows prompt indicator', () => {
-      const { lastFrame } = render(<Input onSubmit={() => {}} />);
+      const { lastFrame } = render(renderWithTheme(<Input onSubmit={() => {}} />));
 
       expect(lastFrame()).toContain('›');
     });
 
     it('shows placeholder when empty', () => {
-      const { lastFrame } = render(<Input onSubmit={() => {}} />);
+      const { lastFrame } = render(renderWithTheme(<Input onSubmit={() => {}} />));
 
       expect(lastFrame()).toContain('ask anything...');
     });
 
     it('shows cursor indicator', () => {
-      const { lastFrame } = render(<Input onSubmit={() => {}} />);
+      const { lastFrame } = render(renderWithTheme(<Input onSubmit={() => {}} />));
 
       expect(lastFrame()).toContain('▎');
     });
@@ -26,7 +27,7 @@ describe('Input', () => {
   describe('disabled state', () => {
     it('hides prompt when disabled', () => {
       const { lastFrame } = render(
-        <Input onSubmit={() => {}} disabled={true} />
+        renderWithTheme(<Input onSubmit={() => {}} disabled={true} />)
       );
 
       expect(lastFrame()).not.toContain('›');
@@ -35,7 +36,7 @@ describe('Input', () => {
 
     it('hides cursor when disabled', () => {
       const { lastFrame } = render(
-        <Input onSubmit={() => {}} disabled={true} />
+        renderWithTheme(<Input onSubmit={() => {}} disabled={true} />)
       );
 
       expect(lastFrame()).not.toContain('▎');
@@ -46,7 +47,7 @@ describe('Input', () => {
     it('updates the rendered value when typing', async () => {
       const onSubmit = mock<(text: string) => void>(() => undefined);
       const { lastFrame, stdin, stdout } = render(
-        <Input onSubmit={onSubmit} />
+        renderWithTheme(<Input onSubmit={onSubmit} />)
       );
 
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -92,7 +93,7 @@ describe('Input', () => {
     it('does nothing when disabled', () => {
       const onSubmit = mock<(text: string) => void>(() => undefined);
       const { lastFrame, stdin } = render(
-        <Input onSubmit={onSubmit} disabled={true} />
+        renderWithTheme(<Input onSubmit={onSubmit} disabled={true} />)
       );
 
       stdin.write('hello');
