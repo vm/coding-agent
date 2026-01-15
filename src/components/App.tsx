@@ -138,6 +138,11 @@ export function App() {
     if (hasBanner) return;
     const page = Math.max(1, transcriptHeight - 1);
 
+    if (input === 'c' && !key.ctrl && !key.meta) {
+      setCollapsed((prev) => !prev);
+      return;
+    }
+
     if (key.upArrow) {
       setScrollOffset((prev) => prev + 1);
       return;
