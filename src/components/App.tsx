@@ -60,6 +60,7 @@ export function App() {
   const [terminalHeight, setTerminalHeight] = useState(stdout.rows || 24);
   const [terminalWidth, setTerminalWidth] = useState(stdout.columns || 80);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [collapsed, setCollapsed] = useState(true);
 
   useEffect(() => {
     const handleExit = () => exit();
@@ -200,6 +201,7 @@ export function App() {
             width={contentWidth}
             height={transcriptHeight}
             scrollOffset={scrollOffset}
+            collapsed={collapsed}
           />
         </Box>
       )}
