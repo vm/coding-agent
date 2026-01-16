@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { Command } from '../commands/types';
 import type { Skill } from '../skills/types';
@@ -36,7 +36,16 @@ export function saveRegistry(registry: Registry, cachePath: string): void {
 }
 
 export function loadRegistry(cachePath: string): Registry | null {
-  throw new Error('Not implemented');
+  if (!existsSync(cachePath)) {
+    return null;
+  }
+
+  try {
+    const content = readFileSync(cachePath, 'utf-8');
+    return JSON.parse(content) as Registry;
+  } catch {
+    return null;
+  }
 }
 
 export function isRegistryStale(registry: Registry, basePath: string): boolean {
