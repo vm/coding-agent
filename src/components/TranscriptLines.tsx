@@ -21,7 +21,7 @@ export function TranscriptLines(props: {
         <Text key={`pad-${i}`}> </Text>
       ))}
       {visible.map((l, i) => (
-        <Text key={`line-${i}`} color={l.color} dimColor={l.dimColor}>
+        <Text key={`line-${i}`} color={l.color} dimColor={l.dimColor} bold={l.bold}>
           {l.text.length === 0 ? ' ' : l.text}
         </Text>
       ))}

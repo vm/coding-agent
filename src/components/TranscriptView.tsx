@@ -8,6 +8,8 @@ import {
 import { TranscriptLines } from './TranscriptLines';
 import type { TranscriptLine } from '../shared/types';
 import { useThinkingElapsedSeconds } from '../hooks/useThinkingElapsedSeconds';
+import { parseMarkdown } from '../utils/markdown';
+import { FormattedTextPartType } from '../shared/types';
 
 type MessageItem = {
   role: MessageRole;
@@ -46,6 +48,64 @@ function wrapText(text: string, width: number): string[] {
     out.push(...wrapLine(l, width));
   }
   return out;
+}
+
+function renderFormattedText(parts: Array<{ type: string; content: string; color?: string }>, width: number): TranscriptLine[] {
+  const lines: TranscriptLine[] = [];
+  let currentLine = '';
+  let currentLineColor: string | undefined = 'white';
+  let currentLineBold = false;
+
+  for (const part of parts) {
+    const content = part.content;
+    const isBold = part.type === FormattedTextPartType.BOLD;
+    const color = part.color;
+
+    const logicalLines = splitLines(content);
+    for (let i = 0; i < logicalLines.length; i++) {
+      const logicalLine = logicalLines[i];
+
+      if (logicalLine.length === 0 && i < logicalLines.length - 1) {
+        if (currentLine) {
+          lines.push({ text: currentLine, color: currentLineColor, bold: currentLineBold });
+          currentLine = '';
+          currentLineColor = 'white';
+          currentLineBold = false;
+        }
+        lines.push({ text: '' });
+        continue;
+      }
+
+      const remainingWidth = width - currentLine.length;
+      const wrapped = wrapLine(logicalLine, remainingWidth > 0 ? remainingWidth : width);
+
+      for (let j = 0; j < wrapped.length; j++) {
+        const segment = wrapped[j];
+
+        if (j === 0 && currentLine.length + segment.length <= width) {
+          currentLine += segment;
+          if (color) currentLineColor = color;
+          if (isBold) currentLineBold = true;
+        } else {
+          if (currentLine) {
+            lines.push({ text: currentLine, color: currentLineColor, bold: currentLineBold });
+            currentLine = '';
+            currentLineColor = 'white';
+            currentLineBold = false;
+          }
+          currentLine = segment;
+          if (color) currentLineColor = color;
+          if (isBold) currentLineBold = true;
+        }
+      }
+    }
+  }
+
+  if (currentLine) {
+    lines.push({ text: currentLine, color: currentLineColor, bold: currentLineBold });
+  }
+
+  return lines.length > 0 ? lines : [{ text: '' }];
 }
 
 function toolStatusLabel(status: ToolCallStatus): string {
@@ -330,8 +390,9 @@ function buildTranscriptLines(params: {
       continue;
     }
 
-    const wrapped = wrapText(msg.content, width);
-    for (const w of wrapped) lines.push({ text: w, color: 'white' });
+    const parts = parseMarkdown(msg.content);
+    const formattedLines = renderFormattedText(parts, width);
+    lines.push(...formattedLines);
     lines.push({ text: '' });
   }
 
