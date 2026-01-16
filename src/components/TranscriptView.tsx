@@ -50,16 +50,33 @@ function wrapText(text: string, width: number): string[] {
   return out;
 }
 
+type LineStyle = {
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  strikethrough: boolean;
+  inverse: boolean;
+};
+
+function getStyleForPart(part: { type: string; color?: string }): LineStyle {
+  const color = part.color ?? 'white';
+  return {
+    color,
+    bold: part.type === FormattedTextPartType.BOLD,
+    italic: part.type === FormattedTextPartType.ITALIC,
+    strikethrough: part.type === FormattedTextPartType.STRIKETHROUGH,
+    inverse: part.type === FormattedTextPartType.INLINE_CODE || part.type === FormattedTextPartType.CODE,
+  };
+}
+
 function renderFormattedText(parts: Array<{ type: string; content: string; color?: string }>, width: number): TranscriptLine[] {
   const lines: TranscriptLine[] = [];
   let currentLine = '';
-  let currentLineColor: string | undefined = 'white';
-  let currentLineBold = false;
+  let currentStyle: LineStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };
 
   for (const part of parts) {
     const content = part.content;
-    const isBold = part.type === FormattedTextPartType.BOLD;
-    const color = part.color ?? 'white';
+    const style = getStyleForPart(part);
 
     const logicalLines = splitLines(content);
     for (let i = 0; i < logicalLines.length; i++) {
@@ -67,10 +84,16 @@ function renderFormattedText(parts: Array<{ type: string; content: string; color
 
       if (logicalLine.length === 0 && i < logicalLines.length - 1) {
         if (currentLine) {
-          lines.push({ text: currentLine, color: currentLineColor, bold: currentLineBold });
+          lines.push({
+            text: currentLine,
+            color: currentStyle.color,
+            bold: currentStyle.bold,
+            italic: currentStyle.italic,
+            strikethrough: currentStyle.strikethrough,
+            inverse: currentStyle.inverse,
+          });
           currentLine = '';
-          currentLineColor = 'white';
-          currentLineBold = false;
+          currentStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };
         }
         lines.push({ text: '' });
         continue;
@@ -87,18 +110,22 @@ function renderFormattedText(parts: Array<{ type: string; content: string; color
 
         if (isFirst && currentLine.length + segment.length <= width) {
           currentLine += segment;
-          currentLineColor = color;
-          currentLineBold = isBold;
+          currentStyle = style;
         } else {
           if (currentLine) {
-            lines.push({ text: currentLine, color: currentLineColor, bold: currentLineBold });
+            lines.push({
+              text: currentLine,
+              color: currentStyle.color,
+              bold: currentStyle.bold,
+              italic: currentStyle.italic,
+              strikethrough: currentStyle.strikethrough,
+              inverse: currentStyle.inverse,
+            });
             currentLine = '';
-            currentLineColor = 'white';
-            currentLineBold = false;
+            currentStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };
           }
           currentLine = segment;
-          currentLineColor = color;
-          currentLineBold = isBold;
+          currentStyle = style;
         }
         isFirst = false;
       }
@@ -106,7 +133,14 @@ function renderFormattedText(parts: Array<{ type: string; content: string; color
   }
 
   if (currentLine) {
-    lines.push({ text: currentLine, color: currentLineColor, bold: currentLineBold });
+    lines.push({
+      text: currentLine,
+      color: currentStyle.color,
+      bold: currentStyle.bold,
+      italic: currentStyle.italic,
+      strikethrough: currentStyle.strikethrough,
+      inverse: currentStyle.inverse,
+    });
   }
 
   return lines.length > 0 ? lines : [{ text: '' }];

@@ -13,6 +13,7 @@
   "dependencies": {
     "ink": "^5.0.1",
     "ink-spinner": "^5.0.0",
+    "marked": "^17.0.1",
     "openai": "^6.16.0",
     "react": "^18.3.1",
     "zustand": "^5.0.10"

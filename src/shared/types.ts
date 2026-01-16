@@ -37,6 +37,9 @@ export type TranscriptLine = {
   color?: string;
   dimColor?: boolean;
   bold?: boolean;
+  italic?: boolean;
+  strikethrough?: boolean;
+  inverse?: boolean;
 };
 
 export type MessageItem = {

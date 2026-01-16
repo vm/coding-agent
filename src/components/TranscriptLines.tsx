@@ -21,7 +21,15 @@ export function TranscriptLines(props: {
         <Text key={`pad-${i}`}> </Text>
       ))}
       {visible.map((l, i) => (
-        <Text key={`line-${i}`} color={l.color} dimColor={l.dimColor} bold={l.bold}>
+        <Text
+          key={`line-${i}`}
+          color={l.color}
+          dimColor={l.dimColor}
+          bold={l.bold}
+          italic={l.italic}
+          strikethrough={l.strikethrough}
+          inverse={l.inverse}
+        >
           {l.text.length === 0 ? ' ' : l.text}
         </Text>
       ))}
