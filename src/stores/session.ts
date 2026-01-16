@@ -44,16 +44,16 @@ type StorageOptions = {
   baseDir?: string;
 };
 
-function getAgentBaseDir(baseDir?: string): string {
-  return join(baseDir ?? process.cwd(), 'agent');
+function getSessionsBaseDir(baseDir?: string): string {
+  return join(baseDir ?? process.cwd(), '.nila', 'sessions');
 }
 
 function getSessionFilePath(runId: string, baseDir?: string): string {
-  return join(getAgentBaseDir(baseDir), runId, 'sessions.json');
+  return join(getSessionsBaseDir(baseDir), runId, 'session.json');
 }
 
 function ensureRunDir(runId: string, baseDir?: string): string {
-  const runDir = join(getAgentBaseDir(baseDir), runId);
+  const runDir = join(getSessionsBaseDir(baseDir), runId);
   mkdirSync(runDir, { recursive: true });
   return runDir;
 }
@@ -78,8 +78,8 @@ export function createFileStorage(
       const runId = getRunId();
       if (!runId) return;
       const runDir = ensureRunDir(runId, options?.baseDir);
-      const tempPath = join(runDir, 'sessions.json.tmp');
-      const finalPath = join(runDir, 'sessions.json');
+      const tempPath = join(runDir, 'session.json.tmp');
+      const finalPath = join(runDir, 'session.json');
       writeFileSync(tempPath, value, 'utf-8');
       renameSync(tempPath, finalPath);
     },
@@ -187,13 +187,13 @@ export function generateRunId(): string {
 }
 
 export function listRunIds(baseDir?: string): string[] {
-  const agentDir = getAgentBaseDir(baseDir);
-  if (!existsSync(agentDir)) return [];
+  const sessionsDir = getSessionsBaseDir(baseDir);
+  if (!existsSync(sessionsDir)) return [];
   try {
-    const entries = readdirSync(agentDir);
+    const entries = readdirSync(sessionsDir);
     return entries.filter((entry) => {
-      const runDir = join(agentDir, entry);
-      const sessionPath = join(runDir, 'sessions.json');
+      const runDir = join(sessionsDir, entry);
+      const sessionPath = join(runDir, 'session.json');
       try {
         return statSync(runDir).isDirectory() && existsSync(sessionPath);
       } catch {

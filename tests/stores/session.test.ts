@@ -263,7 +263,7 @@ describe('file storage', () => {
 
       storage.setItem('session', JSON.stringify({ test: 'data' }));
 
-      const sessionPath = join(testDir, 'agent', runId, 'sessions.json');
+      const sessionPath = join(testDir, '.nila', 'sessions', runId, 'session.json');
       expect(existsSync(sessionPath)).toBe(true);
     });
 
@@ -273,10 +273,10 @@ describe('file storage', () => {
 
       storage.setItem('session', JSON.stringify({ test: 'data' }));
 
-      const tempPath = join(testDir, 'agent', runId, 'sessions.json.tmp');
+      const tempPath = join(testDir, '.nila', 'sessions', runId, 'session.json.tmp');
       expect(existsSync(tempPath)).toBe(false);
 
-      const finalPath = join(testDir, 'agent', runId, 'sessions.json');
+      const finalPath = join(testDir, '.nila', 'sessions', runId, 'session.json');
       expect(existsSync(finalPath)).toBe(true);
     });
 
@@ -439,7 +439,7 @@ describe('file storage', () => {
 
       persistSession();
 
-      const sessionPath = join(testDir, 'agent', runId, 'sessions.json');
+      const sessionPath = join(testDir, '.nila', 'sessions', runId, 'session.json');
       expect(existsSync(sessionPath)).toBe(true);
 
       const content = readFileSync(sessionPath, 'utf-8');

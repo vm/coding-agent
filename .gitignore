@@ -4,5 +4,5 @@ node_modules/
 test-workspace/
 coverage/
 *.lcov
-agent/
+.nila/
 

@@ -1,0 +1,16 @@
+{
+  "state": {
+    "runId": "693e13b9-66e1-4697-8937-2e2a04040080",
+    "createdAt": 1768570580623,
+    "workingDir": "/Users/vigneshmohankumar/Projects/coding-agent",
+    "model": "",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Test persist"
+      }
+    ],
+    "toolCalls": [],
+    "conversation": []
+  }
+}
