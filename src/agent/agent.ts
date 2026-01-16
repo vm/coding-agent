@@ -350,14 +350,14 @@ export class Agent {
             }
           );
 
-          const executedToolCalls =
-            await this.executeToolsParallel(toolCallMessages);
-          toolCalls.push(...executedToolCalls);
-
           this.conversation.push({
             role: 'assistant',
             content: toolCallMessages,
           });
+
+          const executedToolCalls =
+            await this.executeToolsParallel(toolCallMessages);
+          toolCalls.push(...executedToolCalls);
 
           for (let i = 0; i < toolCallMessages.length; i++) {
             this.conversation.push({

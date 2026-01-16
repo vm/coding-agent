@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { Agent } from '../agent/agent';
 import { Input } from './Input';
-import { MessageRole, ToolCallStatus } from '../shared/types';
-import { splitForToolCalls } from '../shared/transcript';
+import { splitForToolCalls, deriveTranscript } from '../shared/transcript';
 import { TranscriptView } from './TranscriptView';
 import { cwd } from 'node:process';
 import {
@@ -21,21 +20,19 @@ export function App({ store: injectedStore }: AppProps) {
   const { stdout } = useStdout();
 
   const store = injectedStore ?? getDefaultStore();
-  const messages = useSessionStore((s) => s.messages, store);
-  const toolCalls = useSessionStore((s) => s.toolCalls, store);
   const conversation = useSessionStore((s) => s.conversation, store);
+  const { messages, toolCalls } = useMemo(
+    () => deriveTranscript(conversation),
+    [conversation]
+  );
 
   const [agent] = useState(() => {
     const created = new Agent(undefined, {
-      onToolStart: (id, name, input) => {
-        store.getState().addToolCall({ id, name, input });
+      onToolStart: () => {
+        store.getState().setConversation(created.getConversation());
       },
-      onToolComplete: (id, _name, _input, result, error) => {
-        store.getState().updateToolCall(id, {
-          status: error ? ToolCallStatus.ERROR : ToolCallStatus.DONE,
-          result,
-          error,
-        });
+      onToolComplete: () => {
+        store.getState().setConversation(created.getConversation());
       },
     });
     if (conversation.length > 0) {
@@ -79,18 +76,16 @@ export function App({ store: injectedStore }: AppProps) {
   }, [agent, store]);
 
   const handleSubmit = async (text: string) => {
-    store.getState().addMessage({ role: MessageRole.USER, content: text });
+    store.getState().addConversationMessage({ role: 'user', content: text });
     setScrollOffset(0);
     setIsLoading(true);
     setThinkingStartTime(Date.now());
     setError(null);
-    store.getState().clearToolCalls();
 
     try {
-      const response = await agent.chat(text);
-      store
-        .getState()
-        .addMessage({ role: MessageRole.ASSISTANT, content: response.text });
+      const responsePromise = agent.chat(text);
+      store.getState().setConversation(agent.getConversation());
+      const response = await responsePromise;
       store.getState().setConversation(agent.getConversation());
       if (response.error) setError(response.error);
     } catch (err) {

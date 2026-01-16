@@ -13,27 +13,17 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import type { Message } from '../agent/types';
-import {
-  ToolCallStatus,
-  type MessageItem,
-  type ToolCallItem,
-} from '../shared/types';
 
 export type SessionData = {
   runId: string | null;
   createdAt: number;
   workingDir: string;
   model: string;
-  messages: MessageItem[];
-  toolCalls: ToolCallItem[];
   conversation: Message[];
 };
 
 export type SessionState = SessionData & {
-  addMessage: (msg: MessageItem) => void;
-  addToolCall: (tc: Omit<ToolCallItem, 'status'>) => void;
-  updateToolCall: (id: string, update: Partial<ToolCallItem>) => void;
-  clearToolCalls: () => void;
+  addConversationMessage: (msg: Message) => void;
   setConversation: (conv: Message[]) => void;
   setModel: (model: string) => void;
   reset: () => void;
@@ -102,8 +92,6 @@ const createInitialState = (): SessionData => ({
   createdAt: Date.now(),
   workingDir: process.cwd(),
   model: '',
-  messages: [],
-  toolCalls: [],
   conversation: [],
 });
 
@@ -119,8 +107,6 @@ type PersistedSessionState = Pick<
   | 'createdAt'
   | 'workingDir'
   | 'model'
-  | 'messages'
-  | 'toolCalls'
   | 'conversation'
 >;
 
@@ -131,22 +117,8 @@ export function createSessionStore(options?: CreateSessionStoreOptions) {
     ...createInitialState(),
     ...initialState,
 
-    addMessage: (msg: MessageItem) =>
-      set((state) => ({ messages: [...state.messages, msg] })),
-
-    addToolCall: (tc: Omit<ToolCallItem, 'status'>) =>
-      set((state) => ({
-        toolCalls: [...state.toolCalls, { ...tc, status: ToolCallStatus.RUNNING }],
-      })),
-
-    updateToolCall: (id: string, update: Partial<ToolCallItem>) =>
-      set((state) => ({
-        toolCalls: state.toolCalls.map((tc) =>
-          tc.id === id ? { ...tc, ...update } : tc
-        ),
-      })),
-
-    clearToolCalls: () => set(() => ({ toolCalls: [] })),
+    addConversationMessage: (msg: Message) =>
+      set((state) => ({ conversation: [...state.conversation, msg] })),
 
     setConversation: (conv: Message[]) => set(() => ({ conversation: conv })),
 
@@ -181,8 +153,6 @@ export function createSessionStore(options?: CreateSessionStoreOptions) {
           createdAt: state.createdAt,
           workingDir: state.workingDir,
           model: state.model,
-          messages: state.messages,
-          toolCalls: state.toolCalls,
           conversation: state.conversation,
         }),
       })

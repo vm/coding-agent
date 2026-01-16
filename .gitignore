@@ -5,5 +5,4 @@ test-workspace/
 coverage/
 *.lcov
 .nila/
-agent/
 

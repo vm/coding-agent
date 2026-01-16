@@ -13,7 +13,6 @@ import {
   resetDefaultStore,
   type SessionStore,
 } from '../../src/stores/session';
-import { MessageRole, ToolCallStatus } from '../../src/shared/types';
 
 describe('session store', () => {
   let store: SessionStore;
@@ -25,8 +24,6 @@ describe('session store', () => {
   it('initializes with empty state', () => {
     const state = store.getState();
     expect(state.runId).toBeNull();
-    expect(state.messages).toEqual([]);
-    expect(state.toolCalls).toEqual([]);
     expect(state.conversation).toEqual([]);
     expect(typeof state.createdAt).toBe('number');
   });
@@ -43,126 +40,35 @@ describe('session store', () => {
     expect(state.model).toBe('gpt-4');
   });
 
-  describe('addMessage', () => {
-    it('appends message to messages array', () => {
-      store.getState().addMessage({ role: MessageRole.USER, content: 'Hello' });
+  describe('addConversationMessage', () => {
+    it('appends message to conversation', () => {
+      store.getState().addConversationMessage({
+        role: 'user',
+        content: 'Hello',
+      });
 
       const state = store.getState();
-      expect(state.messages).toHaveLength(1);
-      expect(state.messages[0]).toEqual({
-        role: MessageRole.USER,
+      expect(state.conversation).toHaveLength(1);
+      expect(state.conversation[0]).toEqual({
+        role: 'user',
         content: 'Hello',
       });
     });
 
     it('appends multiple messages in order', () => {
-      store.getState().addMessage({ role: MessageRole.USER, content: 'Hello' });
-      store
-        .getState()
-        .addMessage({ role: MessageRole.ASSISTANT, content: 'Hi there' });
-
-      const state = store.getState();
-      expect(state.messages).toHaveLength(2);
-      expect(state.messages[0].role).toBe(MessageRole.USER);
-      expect(state.messages[1].role).toBe(MessageRole.ASSISTANT);
-    });
-  });
-
-  describe('addToolCall', () => {
-    it('adds tool call with RUNNING status', () => {
-      store.getState().addToolCall({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/test.txt' },
+      store.getState().addConversationMessage({
+        role: 'user',
+        content: 'Hello',
+      });
+      store.getState().addConversationMessage({
+        role: 'assistant',
+        content: 'Hi there',
       });
 
       const state = store.getState();
-      expect(state.toolCalls).toHaveLength(1);
-      expect(state.toolCalls[0]).toEqual({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/test.txt' },
-        status: ToolCallStatus.RUNNING,
-      });
-    });
-  });
-
-  describe('updateToolCall', () => {
-    it('updates existing tool call', () => {
-      store.getState().addToolCall({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/test.txt' },
-      });
-      store.getState().updateToolCall('tc_1', {
-        status: ToolCallStatus.DONE,
-        result: 'file contents',
-      });
-
-      const state = store.getState();
-      expect(state.toolCalls[0]).toEqual({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/test.txt' },
-        status: ToolCallStatus.DONE,
-        result: 'file contents',
-      });
-    });
-
-    it('does not modify other tool calls', () => {
-      store.getState().addToolCall({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/test1.txt' },
-      });
-      store.getState().addToolCall({
-        id: 'tc_2',
-        name: 'read_file',
-        input: { path: '/test2.txt' },
-      });
-
-      store.getState().updateToolCall('tc_1', { status: ToolCallStatus.DONE });
-
-      const state = store.getState();
-      expect(state.toolCalls[0].status).toBe(ToolCallStatus.DONE);
-      expect(state.toolCalls[1].status).toBe(ToolCallStatus.RUNNING);
-    });
-
-    it('can mark tool call as error', () => {
-      store.getState().addToolCall({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/missing.txt' },
-      });
-      store.getState().updateToolCall('tc_1', {
-        status: ToolCallStatus.ERROR,
-        result: 'File not found',
-        error: true,
-      });
-
-      const state = store.getState();
-      expect(state.toolCalls[0].status).toBe(ToolCallStatus.ERROR);
-      expect(state.toolCalls[0].error).toBe(true);
-    });
-  });
-
-  describe('clearToolCalls', () => {
-    it('empties tool calls array', () => {
-      store.getState().addToolCall({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/test.txt' },
-      });
-      store.getState().addToolCall({
-        id: 'tc_2',
-        name: 'edit_file',
-        input: { path: '/test.txt' },
-      });
-
-      store.getState().clearToolCalls();
-
-      const state = store.getState();
-      expect(state.toolCalls).toEqual([]);
+      expect(state.conversation).toHaveLength(2);
+      expect(state.conversation[0].role).toBe('user');
+      expect(state.conversation[1].role).toBe('assistant');
     });
   });
 
@@ -191,29 +97,29 @@ describe('session store', () => {
 
   describe('reset', () => {
     it('returns to initial state', () => {
-      store.getState().addMessage({ role: MessageRole.USER, content: 'Hello' });
-      store.getState().addToolCall({
-        id: 'tc_1',
-        name: 'read_file',
-        input: { path: '/test.txt' },
+      store.getState().addConversationMessage({
+        role: 'user',
+        content: 'Hello',
       });
 
       store.getState().reset();
 
       const state = store.getState();
-      expect(state.messages).toEqual([]);
-      expect(state.toolCalls).toEqual([]);
+      expect(state.conversation).toEqual([]);
       expect(state.runId).toBeNull();
     });
   });
 
   describe('getState outside React', () => {
     it('returns current state via getState()', () => {
-      store.getState().addMessage({ role: MessageRole.USER, content: 'Test' });
+      store.getState().addConversationMessage({
+        role: 'user',
+        content: 'Test',
+      });
 
       const state = store.getState();
-      expect(state.messages).toHaveLength(1);
-      expect(state.messages[0].content).toBe('Test');
+      expect(state.conversation).toHaveLength(1);
+      expect(state.conversation[0]?.content).toBe('Test');
     });
   });
 
@@ -233,11 +139,17 @@ describe('session store', () => {
       const store1 = createSessionStore();
       const store2 = createSessionStore();
 
-      store1.getState().addMessage({ role: MessageRole.USER, content: 'Store 1' });
-      store2.getState().addMessage({ role: MessageRole.USER, content: 'Store 2' });
+      store1.getState().addConversationMessage({
+        role: 'user',
+        content: 'Store 1',
+      });
+      store2.getState().addConversationMessage({
+        role: 'user',
+        content: 'Store 2',
+      });
 
-      expect(store1.getState().messages[0].content).toBe('Store 1');
-      expect(store2.getState().messages[0].content).toBe('Store 2');
+      expect(store1.getState().conversation[0]?.content).toBe('Store 1');
+      expect(store2.getState().conversation[0]?.content).toBe('Store 2');
     });
   });
 });
@@ -341,8 +253,6 @@ describe('file storage', () => {
           createdAt: 1000,
           workingDir: '/test',
           model: 'test-model',
-          messages: [],
-          toolCalls: [],
           conversation: [],
         },
       };
@@ -363,8 +273,6 @@ describe('file storage', () => {
         createdAt: 2000,
         workingDir: '/legacy',
         model: 'legacy-model',
-        messages: [],
-        toolCalls: [],
         conversation: [],
       };
 
@@ -416,15 +324,13 @@ describe('file storage', () => {
         createdAt: 5000,
         workingDir: '/restored',
         model: 'restored-model',
-        messages: [{ role: MessageRole.USER, content: 'Restored message' }],
-        toolCalls: [],
-        conversation: [],
+        conversation: [{ role: 'user' as const, content: 'Restored message' }],
       };
 
       const store = initializeDefaultStore({ initialData, baseDir: testDir });
 
       expect(store.getState().runId).toBe('restored-run');
-      expect(store.getState().messages[0].content).toBe('Restored message');
+      expect(store.getState().conversation[0]?.content).toBe('Restored message');
     });
   });
 
@@ -432,14 +338,17 @@ describe('file storage', () => {
     it('saves current state to file', () => {
       const runId = generateRunId();
       const store = initializeDefaultStore({ runId, baseDir: testDir });
-      store.getState().addMessage({ role: MessageRole.USER, content: 'Test persist' });
+      store.getState().addConversationMessage({
+        role: 'user',
+        content: 'Test persist',
+      });
 
       const sessionPath = join(testDir, '.nila', 'sessions', runId, 'session.json');
       expect(existsSync(sessionPath)).toBe(true);
 
       const content = readFileSync(sessionPath, 'utf-8');
       const parsed = JSON.parse(content);
-      expect(parsed.state.messages[0].content).toBe('Test persist');
+      expect(parsed.state.conversation[0].content).toBe('Test persist');
     });
   });
 });

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { render } from 'ink-testing-library';
 import { App } from '../../src/components/App';
-import { MessageRole } from '../../src/shared/types';
 import {
   createSessionStore,
   initializeDefaultStore,
@@ -44,7 +43,7 @@ describe('App', () => {
     const store = createSessionStore({
       initialState: {
         runId: 'run_1',
-        messages: [{ role: MessageRole.USER, content: 'Hello from store' }],
+        conversation: [{ role: 'user', content: 'Hello from store' }],
       },
     });
 
@@ -63,9 +62,7 @@ describe('App', () => {
         createdAt: Date.now(),
         workingDir: '/test',
         model: 'test-model',
-        messages: [{ role: MessageRole.USER, content: 'Default store message' }],
-        toolCalls: [],
-        conversation: [],
+        conversation: [{ role: 'user', content: 'Default store message' }],
       },
       baseDir: testDir,
     });
