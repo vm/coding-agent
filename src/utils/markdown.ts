@@ -1,6 +1,5 @@
 import { Lexer, Token, Tokens } from 'marked';
 import { FormattedTextPart, FormattedTextPartType } from '../shared/types';
-import { resolveColor } from './color-mapping';
 
 export function extractDescription(content: string): string {
   const trimmed = content.trim();
@@ -17,37 +16,6 @@ export function extractDescription(content: string): string {
   return firstLine || '';
 }
 
-type ColorSegment = {
-  text: string;
-  color?: string;
-};
-
-function extractColorSegments(text: string): ColorSegment[] {
-  const segments: ColorSegment[] = [];
-  const colorRegex = /\{color:([^}]+)\}([\s\S]*?)\{\/color\}/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = colorRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      segments.push({ text: text.slice(lastIndex, match.index) });
-    }
-    const colorName = match[1].trim();
-    const resolvedColor = resolveColor(colorName);
-    segments.push({
-      text: match[2],
-      color: resolvedColor,
-    });
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    segments.push({ text: text.slice(lastIndex) });
-  }
-
-  return segments.length > 0 ? segments : [{ text }];
-}
-
 function getTextContent(tokens: Token[]): string {
   let result = '';
   for (const token of tokens) {
@@ -62,7 +30,7 @@ function getTextContent(tokens: Token[]): string {
   return result;
 }
 
-function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart[] {
+function processInlineTokens(tokens: Token[]): FormattedTextPart[] {
   const parts: FormattedTextPart[] = [];
 
   for (const token of tokens) {
@@ -73,7 +41,6 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.BOLD,
           content,
-          color,
         });
         break;
       }
@@ -83,7 +50,6 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.ITALIC,
           content,
-          color,
         });
         break;
       }
@@ -92,7 +58,6 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.INLINE_CODE,
           content: codeToken.text,
-          color,
         });
         break;
       }
@@ -102,19 +67,17 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.STRIKETHROUGH,
           content,
-          color,
         });
         break;
       }
       case 'text': {
         const textToken = token as Tokens.Text;
         if ('tokens' in textToken && Array.isArray(textToken.tokens)) {
-          parts.push(...processInlineTokens(textToken.tokens, color));
+          parts.push(...processInlineTokens(textToken.tokens));
         } else {
           parts.push({
             type: FormattedTextPartType.TEXT,
             content: textToken.text,
-            color,
           });
         }
         break;
@@ -124,7 +87,6 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.TEXT,
           content: escapeToken.text,
-          color,
         });
         break;
       }
@@ -134,7 +96,6 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.TEXT,
           content,
-          color,
         });
         break;
       }
@@ -143,7 +104,6 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.TEXT,
           content: imageToken.text || imageToken.title || '[image]',
-          color,
         });
         break;
       }
@@ -151,7 +111,6 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
         parts.push({
           type: FormattedTextPartType.TEXT,
           content: '\n',
-          color,
         });
         break;
       }
@@ -160,13 +119,11 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
           parts.push({
             type: FormattedTextPartType.TEXT,
             content: token.text,
-            color,
           });
         } else if ('raw' in token && typeof token.raw === 'string') {
           parts.push({
             type: FormattedTextPartType.TEXT,
             content: token.raw,
-            color,
           });
         }
       }
@@ -176,25 +133,24 @@ function processInlineTokens(tokens: Token[], color?: string): FormattedTextPart
   return parts;
 }
 
-function processTokens(tokens: Token[], color?: string): FormattedTextPart[] {
+function processTokens(tokens: Token[]): FormattedTextPart[] {
   const parts: FormattedTextPart[] = [];
 
   for (const token of tokens) {
     switch (token.type) {
       case 'paragraph': {
         const paragraphToken = token as Tokens.Paragraph;
-        parts.push(...processInlineTokens(paragraphToken.tokens ?? [], color));
+        parts.push(...processInlineTokens(paragraphToken.tokens ?? []));
         break;
       }
       case 'text': {
         const textToken = token as Tokens.Text;
         if ('tokens' in textToken && Array.isArray(textToken.tokens)) {
-          parts.push(...processInlineTokens(textToken.tokens, color));
+          parts.push(...processInlineTokens(textToken.tokens));
         } else {
           parts.push({
             type: FormattedTextPartType.TEXT,
             content: textToken.text,
-            color,
           });
         }
         break;
@@ -203,7 +159,6 @@ function processTokens(tokens: Token[], color?: string): FormattedTextPart[] {
         parts.push({
           type: FormattedTextPartType.TEXT,
           content: '\n',
-          color,
         });
         break;
       }
@@ -212,63 +167,48 @@ function processTokens(tokens: Token[], color?: string): FormattedTextPart[] {
         parts.push({
           type: FormattedTextPartType.CODE,
           content: codeToken.text,
-          color,
         });
         break;
       }
       case 'heading': {
         const headingToken = token as Tokens.Heading;
-        parts.push(...processInlineTokens(headingToken.tokens ?? [], color));
-        parts.push({ type: FormattedTextPartType.TEXT, content: '\n', color });
+        parts.push(...processInlineTokens(headingToken.tokens ?? []));
+        parts.push({ type: FormattedTextPartType.TEXT, content: '\n' });
         break;
       }
       case 'list': {
         const listToken = token as Tokens.List;
         for (const item of listToken.items) {
           const bullet = listToken.ordered ? `${item.task ? '☐ ' : ''}` : '• ';
-          parts.push({ type: FormattedTextPartType.TEXT, content: bullet, color });
-          parts.push(...processInlineTokens(item.tokens ?? [], color));
-          parts.push({ type: FormattedTextPartType.TEXT, content: '\n', color });
+          parts.push({ type: FormattedTextPartType.TEXT, content: bullet });
+          parts.push(...processInlineTokens(item.tokens ?? []));
+          parts.push({ type: FormattedTextPartType.TEXT, content: '\n' });
         }
         break;
       }
       case 'blockquote': {
         const blockquoteToken = token as Tokens.Blockquote;
-        parts.push({ type: FormattedTextPartType.TEXT, content: '> ', color });
-        parts.push(...processTokens(blockquoteToken.tokens ?? [], color));
+        parts.push({ type: FormattedTextPartType.TEXT, content: '> ' });
+        parts.push(...processTokens(blockquoteToken.tokens ?? []));
         break;
       }
       default: {
         if ('tokens' in token && Array.isArray(token.tokens)) {
-          parts.push(...processInlineTokens(token.tokens, color));
+          parts.push(...processInlineTokens(token.tokens));
         } else if ('text' in token && typeof token.text === 'string') {
           parts.push({
             type: FormattedTextPartType.TEXT,
             content: token.text,
-            color,
           });
         } else if ('raw' in token && typeof token.raw === 'string') {
           parts.push({
             type: FormattedTextPartType.TEXT,
             content: token.raw,
-            color,
           });
         }
       }
     }
   }
-
-  return parts;
-}
-
-function parseSegment(text: string, color?: string): FormattedTextPart[] {
-  if (!text) {
-    return [];
-  }
-
-  const lexer = new Lexer({ gfm: true, breaks: true });
-  const tokens = lexer.lex(text);
-  const parts = processTokens(tokens, color);
 
   return parts;
 }
@@ -278,13 +218,9 @@ export function parseMarkdown(text: string): FormattedTextPart[] {
     return [{ type: FormattedTextPartType.TEXT, content: '' }];
   }
 
-  const segments = extractColorSegments(text);
-  const allParts: FormattedTextPart[] = [];
+  const lexer = new Lexer({ gfm: true, breaks: true });
+  const tokens = lexer.lex(text);
+  const parts = processTokens(tokens);
 
-  for (const segment of segments) {
-    const parts = parseSegment(segment.text, segment.color);
-    allParts.push(...parts);
-  }
-
-  return allParts.length > 0 ? allParts : [{ type: FormattedTextPartType.TEXT, content: text }];
+  return parts.length > 0 ? parts : [{ type: FormattedTextPartType.TEXT, content: text }];
 }

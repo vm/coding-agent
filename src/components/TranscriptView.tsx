@@ -58,10 +58,9 @@ type LineStyle = {
   inverse: boolean;
 };
 
-function getStyleForPart(part: { type: string; color?: string }): LineStyle {
-  const color = part.color ?? 'white';
+function getStyleForPart(part: { type: string }): LineStyle {
   return {
-    color,
+    color: 'white',
     bold: part.type === FormattedTextPartType.BOLD,
     italic: part.type === FormattedTextPartType.ITALIC,
     strikethrough: part.type === FormattedTextPartType.STRIKETHROUGH,
@@ -69,7 +68,7 @@ function getStyleForPart(part: { type: string; color?: string }): LineStyle {
   };
 }
 
-function renderFormattedText(parts: Array<{ type: string; content: string; color?: string }>, width: number): TranscriptLine[] {
+function renderFormattedText(parts: Array<{ type: string; content: string }>, width: number): TranscriptLine[] {
   const lines: TranscriptLine[] = [];
   let currentLine = '';
   let currentStyle: LineStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };

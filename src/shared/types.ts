@@ -29,7 +29,6 @@ export enum FormattedTextPartType {
 export type FormattedTextPart = {
   type: FormattedTextPartType;
   content: string;
-  color?: string;
 };
 
 export type TranscriptLine = {

@@ -181,56 +181,6 @@ describe('parseMarkdown', () => {
     expect(fullText.length).toBe(1000);
   });
 
-  it('parses colored text', () => {
-    const result = parseMarkdown('{color:red}text{/color}');
-    const coloredPart = result.find(p => p.color === 'red');
-    expect(coloredPart).toBeDefined();
-    expect(coloredPart?.content).toContain('text');
-  });
-
-  it('parses colored text with different colors', () => {
-    const result = parseMarkdown('{color:green}success{/color}');
-    const coloredPart = result.find(p => p.color === 'green');
-    expect(coloredPart).toBeDefined();
-    expect(coloredPart?.content).toContain('success');
-  });
-
-  it('handles unclosed color tag', () => {
-    const result = parseMarkdown('{color:red}text');
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  it('parses color with bold formatting inside', () => {
-    const result = parseMarkdown('{color:red}**bold text**{/color}');
-    const boldPart = result.find(p => p.type === FormattedTextPartType.BOLD);
-    expect(boldPart).toBeDefined();
-    expect(boldPart?.color).toBe('red');
-    expect(boldPart?.content).toContain('bold');
-  });
-
-  it('handles escaped braces as literal text', () => {
-    const result = parseMarkdown('{color:red}text with braces{/color}');
-    const coloredPart = result.find(p => p.color === 'red');
-    expect(coloredPart).toBeDefined();
-    expect(coloredPart?.content).toContain('text');
-  });
-
-  it('handles invalid color name', () => {
-    const result = parseMarkdown('{color:invalid}text{/color}');
-    expect(result.length).toBeGreaterThan(0);
-    expect(result[0].color).toBeUndefined();
-  });
-
-  it('parses multiple colored sections', () => {
-    const result = parseMarkdown('{color:red}red{/color} {color:blue}blue{/color}');
-    const redPart = result.find(p => p.color === 'red');
-    const bluePart = result.find(p => p.color === 'blue');
-    expect(redPart).toBeDefined();
-    expect(bluePart).toBeDefined();
-    expect(redPart?.content).toContain('red');
-    expect(bluePart?.content).toContain('blue');
-  });
-
   it('parses strikethrough text', () => {
     const result = parseMarkdown('~~deleted~~');
     const strikePart = result.find(p => p.type === FormattedTextPartType.STRIKETHROUGH);
