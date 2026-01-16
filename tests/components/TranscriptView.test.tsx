@@ -732,6 +732,64 @@ describe('TranscriptView', () => {
     expect(lastFrame()).toContain('  same');
   });
 
+  describe('formatted text rendering', () => {
+    it('wraps continuation segments at full width', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[{ role: MessageRole.ASSISTANT, content: 'AAABBBCCCDDDEEEFFFGGG' }]}
+          toolCalls={[]}
+          isLoading={false}
+          error={null}
+          width={10}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      const output = lastFrame();
+      const lines = output?.split('\n').filter(l => l.trim()) ?? [];
+      expect(lines[0]).toBe('AAABBBCCCD');
+      expect(lines[1]).toBe('DDEEEFFFGG');
+      expect(lines[2]).toBe('G');
+    });
+
+    it('resets formatting state between markdown parts', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[{ role: MessageRole.ASSISTANT, content: '**bold** normal' }]}
+          toolCalls={[]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('bold');
+      expect(output).toContain('normal');
+    });
+
+    it('does not bleed bold formatting to subsequent parts on same line', () => {
+      const { lastFrame } = render(
+        <TranscriptView
+          messages={[{ role: MessageRole.ASSISTANT, content: '**B** N' }]}
+          toolCalls={[]}
+          isLoading={false}
+          error={null}
+          width={80}
+          height={24}
+          collapsed={true}
+        />
+      );
+
+      const output = lastFrame();
+      expect(output).toContain('B');
+      expect(output).toContain('N');
+    });
+  });
+
   describe('collapsed state', () => {
     it('shows collapse indicator when collapsed', () => {
       const { lastFrame } = render(
