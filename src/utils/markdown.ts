@@ -178,8 +178,16 @@ function processTokens(tokens: Token[]): FormattedTextPart[] {
       }
       case 'list': {
         const listToken = token as Tokens.List;
-        for (const item of listToken.items) {
-          const bullet = listToken.ordered ? `${item.task ? '☐ ' : ''}` : '• ';
+        const startNum = typeof listToken.start === 'number' ? listToken.start : 1;
+        for (let idx = 0; idx < listToken.items.length; idx++) {
+          const item = listToken.items[idx];
+          let bullet: string;
+          if (listToken.ordered) {
+            const num = startNum + idx;
+            bullet = item.task ? `${num}. ☐ ` : `${num}. `;
+          } else {
+            bullet = item.task ? '☐ ' : '• ';
+          }
           parts.push({ type: FormattedTextPartType.TEXT, content: bullet });
           parts.push(...processInlineTokens(item.tokens ?? []));
           parts.push({ type: FormattedTextPartType.TEXT, content: '\n' });

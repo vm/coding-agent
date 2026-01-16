@@ -68,14 +68,37 @@ function getStyleForPart(part: { type: string }): LineStyle {
   };
 }
 
+function stylesEqual(a: LineStyle, b: LineStyle): boolean {
+  return a.color === b.color && a.bold === b.bold && a.italic === b.italic && 
+         a.strikethrough === b.strikethrough && a.inverse === b.inverse;
+}
+
+function pushLine(lines: TranscriptLine[], text: string, style: LineStyle): void {
+  lines.push({
+    text,
+    color: style.color,
+    bold: style.bold,
+    italic: style.italic,
+    strikethrough: style.strikethrough,
+    inverse: style.inverse,
+  });
+}
+
 function renderFormattedText(parts: Array<{ type: string; content: string }>, width: number): TranscriptLine[] {
   const lines: TranscriptLine[] = [];
   let currentLine = '';
   let currentStyle: LineStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };
+  const defaultStyle: LineStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };
 
   for (const part of parts) {
     const content = part.content;
     const style = getStyleForPart(part);
+
+    if (currentLine && !stylesEqual(currentStyle, style)) {
+      pushLine(lines, currentLine, currentStyle);
+      currentLine = '';
+      currentStyle = defaultStyle;
+    }
 
     const logicalLines = splitLines(content);
     for (let i = 0; i < logicalLines.length; i++) {
@@ -83,63 +106,40 @@ function renderFormattedText(parts: Array<{ type: string; content: string }>, wi
 
       if (logicalLine.length === 0 && i < logicalLines.length - 1) {
         if (currentLine) {
-          lines.push({
-            text: currentLine,
-            color: currentStyle.color,
-            bold: currentStyle.bold,
-            italic: currentStyle.italic,
-            strikethrough: currentStyle.strikethrough,
-            inverse: currentStyle.inverse,
-          });
+          pushLine(lines, currentLine, currentStyle);
           currentLine = '';
-          currentStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };
+          currentStyle = defaultStyle;
         }
         lines.push({ text: '' });
         continue;
       }
 
       let remaining = logicalLine;
-      let isFirst = true;
 
       while (remaining.length > 0) {
-        const availableWidth = isFirst ? width - currentLine.length : width;
+        const availableWidth = width - currentLine.length;
         const effectiveWidth = availableWidth > 0 ? availableWidth : width;
         const segment = remaining.slice(0, effectiveWidth);
         remaining = remaining.slice(effectiveWidth);
 
-        if (isFirst && currentLine.length + segment.length <= width) {
+        if (currentLine.length + segment.length <= width) {
           currentLine += segment;
           currentStyle = style;
         } else {
           if (currentLine) {
-            lines.push({
-              text: currentLine,
-              color: currentStyle.color,
-              bold: currentStyle.bold,
-              italic: currentStyle.italic,
-              strikethrough: currentStyle.strikethrough,
-              inverse: currentStyle.inverse,
-            });
+            pushLine(lines, currentLine, currentStyle);
             currentLine = '';
-            currentStyle = { color: 'white', bold: false, italic: false, strikethrough: false, inverse: false };
+            currentStyle = defaultStyle;
           }
           currentLine = segment;
           currentStyle = style;
         }
-        isFirst = false;
       }
     }
   }
 
   if (currentLine) {
-    lines.push({
-      text: currentLine,
-      color: currentStyle.color,
-      bold: currentStyle.bold,
-      italic: currentStyle.italic,
-      strikethrough: currentStyle.strikethrough,
-      inverse: currentStyle.inverse,
-    });
+    pushLine(lines, currentLine, currentStyle);
   }
 
   return lines.length > 0 ? lines : [{ text: '' }];

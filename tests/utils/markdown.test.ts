@@ -195,11 +195,23 @@ describe('parseMarkdown', () => {
     expect(codePart?.content).toContain('const x = 1');
   });
 
-  it('parses lists', () => {
+  it('parses unordered lists with bullet points', () => {
     const result = parseMarkdown('- item 1\n- item 2');
     const fullText = result.map(p => p.content).join('');
+    expect(fullText).toContain('•');
     expect(fullText).toContain('item 1');
     expect(fullText).toContain('item 2');
+  });
+
+  it('parses ordered lists with numbering', () => {
+    const result = parseMarkdown('1. first\n2. second\n3. third');
+    const fullText = result.map(p => p.content).join('');
+    expect(fullText).toContain('1.');
+    expect(fullText).toContain('2.');
+    expect(fullText).toContain('3.');
+    expect(fullText).toContain('first');
+    expect(fullText).toContain('second');
+    expect(fullText).toContain('third');
   });
 
   it('parses blockquotes', () => {
