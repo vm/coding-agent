@@ -11,21 +11,7 @@ import { join } from 'node:path';
 import { cwd } from 'node:process';
 import { randomUUID } from 'node:crypto';
 import type { Message } from './agent/types';
-import { MessageRole, ToolCallStatus } from './shared/types';
-
-export type MessageItem = {
-  role: MessageRole;
-  content: string;
-};
-
-export type ToolCallItem = {
-  id: string;
-  name: string;
-  input: Record<string, unknown>;
-  status: ToolCallStatus;
-  result?: string;
-  error?: boolean;
-};
+import type { MessageItem, ToolCallItem } from './shared/types';
 
 export type SessionData = {
   runId: string;

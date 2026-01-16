@@ -9,6 +9,20 @@ export enum ToolCallStatus {
   ERROR = 'error',
 }
 
+export type MessageItem = {
+  role: MessageRole;
+  content: string;
+};
+
+export type ToolCallItem = {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  status: ToolCallStatus;
+  result?: string;
+  error?: boolean;
+};
+
 export enum ToolName {
   READ_FILE = 'read_file',
   EDIT_FILE = 'edit_file',

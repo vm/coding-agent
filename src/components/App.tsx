@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Box, Text, useApp, useInput, useStdout } from 'ink';
 import { Agent } from '../agent/agent';
 import { Input } from './Input';
-import { MessageRole, ToolCallStatus } from '../shared/types';
+import {
+  MessageItem,
+  MessageRole,
+  ToolCallItem,
+  ToolCallStatus,
+} from '../shared/types';
 import { splitForToolCalls } from '../shared/transcript';
 import { TranscriptView } from './TranscriptView';
 import { cwd } from 'node:process';
-import {
-  MessageItem,
-  SessionData,
-  SessionStore,
-  ToolCallItem,
-  saveSession,
-} from '../session';
+import { SessionData, SessionStore, saveSession } from '../session';
 
 type AppProps = {
   initialSession?: SessionData | null;
@@ -28,9 +27,9 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
   const [messages, setMessages] = useState<MessageItem[]>(initialMessages);
   const [toolCalls, setToolCalls] =
     useState<ToolCallItem[]>(initialToolCalls);
-  const messagesRef = useRef<MessageItem[]>(initialMessages);
-  const toolCallsRef = useRef<ToolCallItem[]>(initialToolCalls);
-  const createdAtRef = useRef<number>(initialSession?.createdAt ?? Date.now());
+  const [createdAt] = useState<number>(
+    initialSession?.createdAt ?? Date.now()
+  );
   const activeRunId = runId ?? initialSession?.runId ?? null;
   const store = sessionStore ?? { save: saveSession };
 
@@ -42,7 +41,6 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
             ...prev,
             { id, name, input, status: ToolCallStatus.RUNNING },
           ];
-          toolCallsRef.current = next;
           return next;
         });
       },
@@ -50,24 +48,13 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
         setToolCalls((prev) =>
           prev.map((tc) => {
             if (tc.id !== id) return tc;
-            const nextItem = {
+            return {
               ...tc,
               status: error ? ToolCallStatus.ERROR : ToolCallStatus.DONE,
               result,
               error,
             };
-            return nextItem;
           })
-        );
-        toolCallsRef.current = toolCallsRef.current.map((tc) =>
-          tc.id === id
-            ? {
-                ...tc,
-                status: error ? ToolCallStatus.ERROR : ToolCallStatus.DONE,
-                result,
-                error,
-              }
-            : tc
         );
       },
     });
@@ -111,7 +98,7 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
     (nextMessages: MessageItem[], nextToolCalls: ToolCallItem[]): SessionData => {
       return {
         runId: activeRunId ?? '',
-        createdAt: createdAtRef.current,
+        createdAt,
         workingDir: cwd(),
         model: agent.getModel(),
         conversation: agent.getConversation(),
@@ -119,7 +106,7 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
         toolCalls: nextToolCalls,
       };
     },
-    [activeRunId, agent]
+    [activeRunId, agent, createdAt]
   );
 
   const persistSession = useCallback(
@@ -132,33 +119,23 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
   );
 
   const handleSubmit = async (text: string) => {
-    setMessages((prev) => {
-      const next = [...prev, { role: MessageRole.USER, content: text }];
-      messagesRef.current = next;
-      return next;
-    });
+    setMessages((prev) => [
+      ...prev,
+      { role: MessageRole.USER, content: text },
+    ]);
     setScrollOffset(0);
     setIsLoading(true);
     setThinkingStartTime(Date.now());
     setError(null);
-    setToolCalls(() => {
-      toolCallsRef.current = [];
-      return [];
-    });
+    setToolCalls([]);
 
     try {
       const response = await agent.chat(text);
-      let nextMessages: MessageItem[] = [];
-      setMessages((prev) => {
-        nextMessages = [
-          ...prev,
-          { role: MessageRole.ASSISTANT, content: response.text },
-        ];
-        messagesRef.current = nextMessages;
-        return nextMessages;
-      });
+      setMessages((prev) => [
+        ...prev,
+        { role: MessageRole.ASSISTANT, content: response.text },
+      ]);
       if (response.error) setError(response.error);
-      persistSession(nextMessages, toolCallsRef.current);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -167,6 +144,11 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
       setThinkingStartTime(null);
     }
   };
+
+  useEffect(() => {
+    if (isLoading) return;
+    persistSession(messages, toolCalls);
+  }, [isLoading, messages, toolCalls, persistSession]);
 
   const banner = [
     '███╗   ██╗██╗██╗      █████╗      ██████╗ ██████╗ ██████╗ ███████╗',
@@ -226,12 +208,6 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
     }
   });
 
-  useEffect(() => {
-    return () => {
-      persistSession(messagesRef.current, toolCallsRef.current);
-    };
-  }, [persistSession]);
-
   return (
     <Box flexDirection="column" height={terminalHeight}>
       {hasBanner && (
@@ -263,10 +239,12 @@ export function App({ initialSession, runId, sessionStore }: AppProps) {
             messages={before}
             afterAssistant={afterAssistant}
             toolCalls={toolCalls.map((tc) => ({
+              id: tc.id,
               name: tc.name,
               input: tc.input,
               status: tc.status,
               result: tc.result,
+              error: tc.error,
             }))}
             isLoading={isLoading}
             thinkingStartTime={thinkingStartTime}

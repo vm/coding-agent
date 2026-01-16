@@ -1,4 +1,10 @@
-import { MessageRole, ToolCallStatus, ToolName } from '../shared/types';
+import {
+  MessageItem,
+  MessageRole,
+  ToolCallItem,
+  ToolCallStatus,
+  ToolName,
+} from '../shared/types';
 import {
   formatToolCallName,
   formatToolCallTarget,
@@ -8,19 +14,6 @@ import {
 import { TranscriptLines } from './TranscriptLines';
 import type { TranscriptLine } from '../shared/types';
 import { useThinkingElapsedSeconds } from '../hooks/useThinkingElapsedSeconds';
-
-type MessageItem = {
-  role: MessageRole;
-  content: string;
-};
-
-type ToolCallItem = {
-  id?: string;
-  name: string;
-  input?: Record<string, unknown>;
-  status: ToolCallStatus;
-  result?: string;
-};
 
 const READ_FILE_MAX_LINES = 50;
 const RUN_COMMAND_MAX_LINES = 100;

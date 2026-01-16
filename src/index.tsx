@@ -1,10 +1,8 @@
 import { render } from 'ink';
 import { App } from './components/App';
-import {
-  findLatestRunId,
-  generateRunId,
-  loadSession,
-} from './session';
+import { parseArgs } from 'node:util';
+import { findLatestRunId, generateRunId, loadSession } from './session';
+import type { SessionData } from './session';
 
 type ResumeSelection =
   | { mode: 'latest' }
@@ -12,22 +10,33 @@ type ResumeSelection =
   | null;
 
 function parseResumeSelection(args: string[]): ResumeSelection {
-  const resumeIndex = args.indexOf('--resume');
-  if (resumeIndex === -1) return null;
-  const next = args[resumeIndex + 1];
-  if (next && !next.startsWith('-')) {
-    return { mode: 'id', runId: next };
+  const { values, positionals } = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      resume: {
+        type: 'boolean',
+      },
+    },
+  });
+
+  if (!values.resume) return null;
+  const [candidate] = positionals;
+  if (candidate && !candidate.startsWith('-')) {
+    return { mode: 'id', runId: candidate };
   }
   return { mode: 'latest' };
 }
 
-const args = process.argv.slice(2);
-const resumeSelection = parseResumeSelection(args);
+function resolveResumeSession(args: string[]): {
+  initialSession: SessionData | null;
+  runId: string;
+} {
+  const resumeSelection = parseResumeSelection(args);
+  if (!resumeSelection) {
+    return { initialSession: null, runId: generateRunId() };
+  }
 
-let initialSession = null;
-let runId: string | null = null;
-
-if (resumeSelection) {
   const selectedRunId =
     resumeSelection.mode === 'latest'
       ? findLatestRunId()
@@ -44,11 +53,10 @@ if (resumeSelection) {
     process.exit(1);
   }
 
-  initialSession = loaded;
-  runId = loaded.runId;
-} else {
-  runId = generateRunId();
+  return { initialSession: loaded, runId: loaded.runId };
 }
+
+const { initialSession, runId } = resolveResumeSession(process.argv.slice(2));
 
 render(<App initialSession={initialSession} runId={runId} />, {
   exitOnCtrlC: true,
