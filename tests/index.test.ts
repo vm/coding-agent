@@ -11,7 +11,8 @@ describe('index', () => {
 
     expect(content).toContain("import { render } from 'ink'");
     expect(content).toContain("import { App } from './components/App'");
-    expect(content).toContain('render(<App');
-    expect(content).toContain('exitOnCtrlC: true');
+    expect(content).toContain('render(<App />');
+    // Ctrl+C handled via custom stdin filter (str.includes('\x03'))
+    expect(content).toContain("str.includes('\\x03')");
   });
 });

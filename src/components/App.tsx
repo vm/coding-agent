@@ -4,6 +4,7 @@ import { Agent } from '../agent/agent';
 import { Input } from './Input';
 import { splitForToolCalls, deriveTranscript } from '../shared/transcript';
 import { TranscriptView } from './TranscriptView';
+import { setScrollCallback } from '../shared/scroll';
 import { cwd } from 'node:process';
 import {
   useSessionStore,
@@ -86,6 +87,18 @@ export function App({ store: injectedStore, agentFactory }: AppProps) {
   useEffect(() => {
     store.getState().setModel(agent.getModel());
   }, [agent, store]);
+
+  // Register scroll callback for mouse wheel events (handled in index.tsx)
+  useEffect(() => {
+    setScrollCallback((direction) => {
+      if (direction === 'up') {
+        setScrollOffset((p) => p + 3);
+      } else {
+        setScrollOffset((p) => Math.max(0, p - 3));
+      }
+    });
+    return () => setScrollCallback(null);
+  }, []);
 
   const handleSubmit = async (text: string) => {
     store.getState().addConversationMessage({ role: 'user', content: text });

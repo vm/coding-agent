@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
 import { render } from 'ink';
+import { PassThrough } from 'stream';
 import { App } from './components/App';
 import {
   generateRunId,
@@ -7,6 +8,7 @@ import {
   loadSessionData,
   initializeDefaultStore,
 } from './stores/session';
+import { emitScroll } from './shared/scroll';
 
 const { values } = parseArgs({
   args: process.argv.slice(2),
@@ -45,4 +47,52 @@ if (wantsResume) {
   initializeDefaultStore({ runId });
 }
 
-render(<App />, { exitOnCtrlC: true });
+// SGR mouse mode escape sequences
+const ENABLE_MOUSE = '\x1b[?1000h\x1b[?1006h';
+const DISABLE_MOUSE = '\x1b[?1000l\x1b[?1006l';
+// eslint-disable-next-line no-control-regex
+const SGR_MOUSE_RE = /\x1b\[<(\d+);(\d+);(\d+)[Mm]/g;
+
+// Create filtered stdin with TTY-like interface for Ink
+const filteredStdin = new PassThrough();
+Object.assign(filteredStdin, {
+  isTTY: true,
+  setRawMode: () => {},
+  ref: () => {},
+  unref: () => {},
+});
+
+// Enable mouse mode and raw mode
+process.stdout.write(ENABLE_MOUSE);
+process.stdin.setRawMode?.(true);
+
+// Filter stdin data before passing to Ink
+process.stdin.on('data', (data: Buffer) => {
+  const str = data.toString();
+
+  // Handle Ctrl+C - exit cleanly
+  if (str.includes('\x03')) {
+    process.stdout.write(DISABLE_MOUSE);
+    process.exit(0);
+  }
+
+  // Extract and emit scroll events
+  SGR_MOUSE_RE.lastIndex = 0;
+  let match;
+  while ((match = SGR_MOUSE_RE.exec(str)) !== null) {
+    const btn = parseInt(match[1], 10);
+    if (btn === 64) emitScroll('up');
+    else if (btn === 65) emitScroll('down');
+  }
+
+  // Strip all mouse sequences before passing to Ink
+  const filtered = str.replace(SGR_MOUSE_RE, '');
+  if (filtered) {
+    filteredStdin.push(filtered);
+  }
+});
+
+// Cleanup on exit
+process.on('exit', () => process.stdout.write(DISABLE_MOUSE));
+
+render(<App />, { stdin: filteredStdin as unknown as typeof process.stdin });
