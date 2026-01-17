@@ -14,6 +14,7 @@ export enum ToolName {
   EDIT_FILE = 'edit_file',
   RUN_COMMAND = 'run_command',
   LIST_FILES = 'list_files',
+  SEARCH_FILES = 'search_files',
 }
 
 export enum FormattedTextPartType {

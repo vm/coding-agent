@@ -2,6 +2,7 @@ import { readFile } from './read-file';
 import { editFile } from './edit-file';
 import { runCommand } from './run-command';
 import { listFiles } from './list-files';
+import { searchFiles } from './search-files';
 import { ToolName } from '../shared/types';
 
 export const tools = [
@@ -83,6 +84,34 @@ export const tools = [
       },
     },
   },
+  {
+    type: 'function' as const,
+    function: {
+      name: ToolName.SEARCH_FILES,
+      description:
+        'Search for files using glob patterns and optionally filter by content regex. Returns file paths for glob-only, or file:line:content for content searches.',
+      parameters: {
+        type: 'object' as const,
+        properties: {
+          pattern: {
+            type: 'string',
+            description:
+              'Glob pattern to match files (e.g., "**/*.ts", "src/**/*.js", "*.md")',
+          },
+          contentPattern: {
+            type: 'string',
+            description: 'Optional regex pattern to search within file contents',
+          },
+          path: {
+            type: 'string',
+            description:
+              'Base directory for search (defaults to current working directory)',
+          },
+        },
+        required: ['pattern'],
+      },
+    },
+  },
 ];
 
 export function executeTool(name: string, input: unknown): string {
@@ -104,6 +133,13 @@ export function executeTool(name: string, input: unknown): string {
 
     case ToolName.LIST_FILES:
       return listFiles(inputObj.path as string);
+
+    case ToolName.SEARCH_FILES:
+      return searchFiles(
+        inputObj.pattern as string,
+        inputObj.contentPattern as string | undefined,
+        inputObj.path as string | undefined
+      );
 
     default:
       return `Error: Unknown tool "${name}"`;

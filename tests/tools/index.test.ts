@@ -52,4 +52,17 @@ describe('executeTool (dispatcher)', () => {
     expect(result).toContain('Error');
     expect(result).toContain('unknown_tool');
   });
+
+  it('routes search_files to searchFiles function', () => {
+    writeFileSync(join(testDir, 'test.ts'), 'findme here');
+    writeFileSync(join(testDir, 'other.js'), 'not this');
+
+    const result = executeTool('search_files', {
+      pattern: '*.ts',
+      contentPattern: 'findme',
+      path: testDir,
+    });
+    expect(result).toContain('test.ts');
+    expect(result).toContain('findme');
+  });
 });
